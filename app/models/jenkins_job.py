@@ -1,15 +1,9 @@
-import os
 from datetime import datetime
 from app import db
 
 class JenkinsJob(db.Model):
     __tablename__ = 'jenkins_jobs'
-    
-    # Use schema only for PostgreSQL
-    if os.environ.get('DATABASE_URL', '').startswith('postgresql'):
-        __table_args__ = {'schema': 'autoltv2'}
-    else:
-        __table_args__ = {}
+    __table_args__ = {'schema': 'autoltv2'}
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)

@@ -45,11 +45,6 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-        'sqlite:///autoltv2.db'
-    
-    # Override schema options for SQLite
-    SQLALCHEMY_ENGINE_OPTIONS = {}
 
 class ProductionConfig(Config):
     DEBUG = False

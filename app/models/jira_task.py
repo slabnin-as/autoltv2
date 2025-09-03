@@ -1,15 +1,9 @@
-import os
 from datetime import datetime
 from app import db
 
 class JiraTask(db.Model):
     __tablename__ = 'jira_tasks'
-    
-    # Use schema only for PostgreSQL
-    if os.environ.get('DATABASE_URL', '').startswith('postgresql'):
-        __table_args__ = {'schema': 'autoltv2'}
-    else:
-        __table_args__ = {}
+    __table_args__ = {'schema': 'autoltv2'}
     
     id = db.Column(db.Integer, primary_key=True)
     jira_key = db.Column(db.String(20), unique=True, nullable=False, index=True)
