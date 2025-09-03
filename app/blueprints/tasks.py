@@ -1,0 +1,98 @@
+from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for
+from sqlalchemy import or_
+from app import db
+from app.models.jira_task import JiraTask
+from app.services.jira_service import JiraService
+
+bp = Blueprint('tasks', __name__)
+
+@bp.route('/')
+def list_tasks():
+    page = request.args.get('page', 1, type=int)
+    search = request.args.get('search', '')
+    status = request.args.get('status', '')
+    
+    query = JiraTask.query
+    
+    if search:
+        query = query.filter(or_(
+            JiraTask.jira_key.contains(search),
+            JiraTask.summary.contains(search),
+            JiraTask.assignee.contains(search)
+        ))
+    
+    if status:
+        query = query.filter(JiraTask.status == status)
+    
+    tasks = query.order_by(JiraTask.updated_at.desc()).paginate(
+        page=page, per_page=20, error_out=False
+    )
+    
+    # Get unique statuses for filter
+    statuses = db.session.query(JiraTask.status).distinct().all()
+    statuses = [s[0] for s in statuses]
+    
+    return render_template('tasks/list.html', 
+                         tasks=tasks, 
+                         search=search,
+                         current_status=status,
+                         statuses=statuses)
+
+@bp.route('/<int:task_id>')
+def task_detail(task_id):
+    task = JiraTask.query.get_or_404(task_id)
+    return render_template('tasks/detail.html', task=task)
+
+@bp.route('/sync', methods=['POST'])
+def sync_tasks():
+    jql = request.form.get('jql', 'project = "YOUR_PROJECT" AND status != "Closed"')
+    max_results = request.form.get('max_results', 50, type=int)
+    
+    jira_service = JiraService()
+    synced_count = jira_service.sync_tasks_to_db(jql, max_results)
+    
+    if synced_count > 0:
+        flash(f'Синхронизировано {synced_count} задач из Jira', 'success')
+    else:
+        flash('Не удалось синхронизировать задачи', 'error')
+    
+    return redirect(url_for('tasks.list_tasks'))
+
+@bp.route('/api/tasks')
+def api_tasks():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    search = request.args.get('search', '')
+    
+    query = JiraTask.query
+    
+    if search:
+        query = query.filter(or_(
+            JiraTask.jira_key.contains(search),
+            JiraTask.summary.contains(search)
+        ))
+    
+    tasks = query.order_by(JiraTask.updated_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return jsonify({
+        'tasks': [task.to_dict() for task in tasks.items],
+        'total': tasks.total,
+        'pages': tasks.pages,
+        'current_page': page
+    })
+
+@bp.route('/api/tasks/<int:task_id>', methods=['PUT'])
+def api_update_task(task_id):
+    task = JiraTask.query.get_or_404(task_id)
+    data = request.get_json()
+    
+    # Update allowed fields
+    allowed_fields = ['summary', 'description', 'assignee', 'priority']
+    for field in allowed_fields:
+        if field in data:
+            setattr(task, field, data[field])
+    
+    db.session.commit()
+    return jsonify(task.to_dict())
