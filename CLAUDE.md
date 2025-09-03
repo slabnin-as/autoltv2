@@ -84,6 +84,21 @@ Uses environment variables for external service credentials:
 - SECRET_KEY for Flask sessions
 - FLASK_ENV for environment selection
 
+## Database Schema
+
+**PostgreSQL Production/Testing:**
+- Uses `autoltv2` schema instead of `public`
+- Connection configured with `search_path=autoltv2,public`
+- All models automatically use the autoltv2 schema
+
+**SQLite Development:**
+- Uses default schema (no schema separation)
+- Models conditionally apply schema based on database type
+
+**Schema Configuration:**
+- Set `DATABASE_URL=postgresql://user:pass@host/db?options=-csearch_path%3Dautoltv2%2Cpublic`
+- Models automatically detect PostgreSQL and apply schema
+
 ## Application Startup
 
 Entry point is `run.py` which:

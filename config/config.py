@@ -12,6 +12,13 @@ class Config:
         'postgresql://postgres:example@192.168.1.8:5432/de_db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
+    # Database engine options for schema
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'connect_args': {
+            'options': '-csearch_path=autoltv2,public'
+        }
+    }
+    
     # Jira Configuration
     JIRA_URL = os.environ.get('JIRA_URL')
     JIRA_USERNAME = os.environ.get('JIRA_USERNAME')
@@ -38,6 +45,11 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
+        'sqlite:///autoltv2.db'
+    
+    # Override schema options for SQLite
+    SQLALCHEMY_ENGINE_OPTIONS = {}
 
 class ProductionConfig(Config):
     DEBUG = False
@@ -58,6 +70,13 @@ class TestingConfig(Config):
     SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DATABASE_URL') or \
         'postgresql://username:password@localhost/autoltv2_test'
     WTF_CSRF_ENABLED = False
+    
+    # Database engine options for schema
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'connect_args': {
+            'options': '-csearch_path=autoltv2,public'
+        }
+    }
 
 config = {
     'development': DevelopmentConfig,
