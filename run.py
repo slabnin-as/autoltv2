@@ -19,9 +19,8 @@ def make_shell_context():
         'scheduler': scheduler_service
     }
 
-@app.before_first_request
-def setup_scheduled_jobs():
-    scheduler_service.update_job_schedules()
+# with app.app_context():
+#     scheduler_service.update_job_schedules()
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
