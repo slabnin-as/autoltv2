@@ -16,6 +16,10 @@ class JiraTask(db.Model):
     issue_type = db.Column(db.String(50))
     project_key = db.Column(db.String(10), nullable=False)
     
+    # AutoLT specific fields
+    planned_start = db.Column(db.DateTime)
+    labels = db.Column(db.JSON)  # Store labels as JSON array
+    
     # Timestamps
     created_date = db.Column(db.DateTime)
     updated_date = db.Column(db.DateTime)
@@ -41,6 +45,8 @@ class JiraTask(db.Model):
             'priority': self.priority,
             'issue_type': self.issue_type,
             'project_key': self.project_key,
+            'planned_start': self.planned_start.isoformat() if self.planned_start else None,
+            'labels': self.labels,
             'created_date': self.created_date.isoformat() if self.created_date else None,
             'updated_date': self.updated_date.isoformat() if self.updated_date else None,
             'resolved_date': self.resolved_date.isoformat() if self.resolved_date else None,

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 from jira import JIRA
 from app import db
 from app.models.jira_task import JiraTask
@@ -62,6 +62,85 @@ class JiraService:
             print(f"Error syncing tasks to database: {e}")
             return 0
     
+    def sync_ekplt_autolt_tasks(self, max_results=100):
+        """
+        Sync tasks from EKPLT project with label 'autolt' and planned_start >= today
+        """
+        if not self.jira:
+            return 0
+        
+        # Build JQL query for EKPLT project with autolt label and planned_start >= today
+        today = date.today().strftime('%Y-%m-%d')
+        jql_query = (
+            f'project = EKPLT AND '
+            f'labels = "autolt" AND '
+            f'cf[10000] >= "{today}" '  # Assuming customfield_10000 is planned_start
+            f'ORDER BY cf[10000] ASC'
+        )
+        
+        print(f"JQL Query: {jql_query}")
+        
+        try:
+            # Use expand to get all fields including custom fields
+            issues = self.jira.search_issues(
+                jql_query, 
+                maxResults=max_results,
+                expand='names'  # Get field names for debugging
+            )
+            
+            synced_count = 0
+            
+            for issue in issues:
+                task_data = self._issue_to_dict(issue)
+                existing_task = JiraTask.query.filter_by(jira_key=issue.key).first()
+                
+                if existing_task:
+                    # Update existing task
+                    for key, value in task_data.items():
+                        if hasattr(existing_task, key):
+                            setattr(existing_task, key, value)
+                    existing_task.last_synced = datetime.now()
+                else:
+                    # Create new task
+                    new_task = JiraTask(**task_data)
+                    db.session.add(new_task)
+                
+                synced_count += 1
+                print(f"Synced: {issue.key} - {task_data['summary']}")
+            
+            db.session.commit()
+            print(f"Successfully synced {synced_count} EKPLT autolt tasks")
+            return synced_count
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error syncing EKPLT autolt tasks: {e}")
+            return 0
+    
+    def get_jira_fields_info(self, issue_key='EKPLT-1'):
+        """
+        Debug method to get information about available fields in Jira
+        """
+        if not self.jira:
+            return None
+        
+        try:
+            issue = self.jira.issue(issue_key, expand='names')
+            fields_info = {}
+            
+            # Get all available fields
+            for field_key, field_value in issue.raw['fields'].items():
+                field_name = getattr(self.jira.fields(), field_key, {}).get('name', field_key)
+                fields_info[field_key] = {
+                    'name': field_name,
+                    'value': str(field_value)[:100] if field_value else None  # Truncate long values
+                }
+            
+            return fields_info
+        except Exception as e:
+            print(f"Error getting field info: {e}")
+            return None
+    
     def _issue_to_dict(self, issue):
         created_date = None
         updated_date = None
@@ -76,6 +155,19 @@ class JiraService:
         if hasattr(issue.fields, 'resolutiondate') and issue.fields.resolutiondate:
             resolved_date = datetime.strptime(issue.fields.resolutiondate[:19], '%Y-%m-%dT%H:%M:%S')
         
+        # Parse planned_start field (custom field)
+        planned_start = None
+        if hasattr(issue.fields, 'customfield_10000') and issue.fields.customfield_10000:  # Assuming planned_start is custom field
+            try:
+                planned_start = datetime.strptime(issue.fields.customfield_10000[:19], '%Y-%m-%dT%H:%M:%S')
+            except (ValueError, TypeError):
+                planned_start = None
+        
+        # Parse labels
+        labels = []
+        if hasattr(issue.fields, 'labels') and issue.fields.labels:
+            labels = list(issue.fields.labels)
+        
         return {
             'jira_key': issue.key,
             'summary': issue.fields.summary,
@@ -86,8 +178,10 @@ class JiraService:
             'priority': issue.fields.priority.name if issue.fields.priority else None,
             'issue_type': issue.fields.issuetype.name,
             'project_key': issue.fields.project.key,
+            'planned_start': planned_start,
+            'labels': labels,
             'created_date': created_date,
             'updated_date': updated_date,
             'resolved_date': resolved_date,
-            'last_synced': datetime.utcnow()
+            'last_synced': datetime.now()
         }

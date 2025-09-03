@@ -52,17 +52,24 @@ Flask application using Blueprint pattern for modular organization:
 
 ### Models (`app/models/`)
 - **JiraTask**: Stores Jira issue data with metadata tracking
+  - `planned_start`: DateTime field for planned task execution
+  - `labels`: JSON array field for Jira labels
+  - Supports EKPLT project-specific filtering by label and date
 - **JenkinsJob**: Manages Jenkins job definitions, schedules, and execution history
 - Uses SQLAlchemy ORM with PostgreSQL backend
 
 ### Services (`app/services/`)
 - **JiraService**: Handles Jira API integration using python-jira library
+  - `sync_ekplt_autolt_tasks()`: Sync EKPLT project tasks with 'autolt' label and planned_start >= today
+  - `get_jira_fields_info()`: Debug method to discover custom field IDs in Jira
 - **JenkinsService**: Manages Jenkins job triggering via python-jenkins
 - **SchedulerService**: APScheduler-based background job scheduling with cron expressions
 
 ### Web Interface (`app/blueprints/`)
 - **main**: Dashboard and general routes
-- **tasks**: Jira task management endpoints  
+- **tasks**: Jira task management endpoints
+  - `POST /tasks/sync-ekplt`: Web form endpoint for EKPLT task synchronization
+  - `POST /tasks/api/sync-ekplt`: JSON API endpoint for EKPLT task synchronization
 - **jobs**: Jenkins job management endpoints
 - Blueprint registration with URL prefixes (/tasks, /jobs)
 
@@ -103,3 +110,24 @@ Entry point is `run.py` which:
 - Sets up shell context with database models
 - Configures scheduled jobs on first request
 - Runs on localhost:5000 in debug mode for development
+
+## EKPLT Project Integration
+
+**Purpose**: Synchronize tasks from EKPLT project with specific filtering criteria:
+- Project: EKPLT
+- Label: must contain 'autolt'
+- Planned start: today or later (`planned_start >= today`)
+
+**JQL Query**: `project = EKPLT AND labels = "autolt" AND cf[10000] >= "2025-09-03" ORDER BY cf[10000] ASC`
+
+**API Usage**:
+```bash
+# Sync EKPLT tasks via API
+curl -X POST http://localhost:5000/tasks/api/sync-ekplt \
+  -H "Content-Type: application/json" \
+  -d '{"max_results": 100}'
+```
+
+**Custom Field Mapping**:
+- `planned_start` field maps to Jira custom field (default: `cf[10000]`)
+- Use `JiraService.get_jira_fields_info()` to discover actual field IDs

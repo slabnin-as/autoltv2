@@ -58,6 +58,36 @@ def sync_tasks():
     
     return redirect(url_for('tasks.list_tasks'))
 
+@bp.route('/sync-ekplt', methods=['POST'])
+def sync_ekplt_tasks():
+    """Sync EKPLT tasks with autolt label and planned_start >= today"""
+    max_results = request.form.get('max_results', 100, type=int)
+    
+    jira_service = JiraService()
+    synced_count = jira_service.sync_ekplt_autolt_tasks(max_results)
+    
+    if synced_count > 0:
+        flash(f'Синхронизировано {synced_count} задач EKPLT с меткой "autolt"', 'success')
+    else:
+        flash('Не удалось синхронизировать задачи EKPLT или задачи не найдены', 'warning')
+    
+    return redirect(url_for('tasks.list_tasks'))
+
+@bp.route('/api/sync-ekplt', methods=['POST'])
+def api_sync_ekplt_tasks():
+    """API endpoint for EKPLT task synchronization"""
+    max_results = request.json.get('max_results', 100) if request.json else 100
+    
+    jira_service = JiraService()
+    synced_count = jira_service.sync_ekplt_autolt_tasks(max_results)
+    
+    return jsonify({
+        'success': synced_count > 0,
+        'synced_count': synced_count,
+        'message': f'Синхронизировано {synced_count} задач EKPLT' if synced_count > 0 
+                  else 'Задачи не найдены или произошла ошибка'
+    })
+
 @bp.route('/api/tasks')
 def api_tasks():
     page = request.args.get('page', 1, type=int)
