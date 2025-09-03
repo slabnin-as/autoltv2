@@ -22,9 +22,9 @@ class JiraTask(db.Model):
     resolved_date = db.Column(db.DateTime)
     
     # Metadata
-    last_synced = db.Column(db.DateTime, default=datetime.utcnow)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_synced = db.Column(db.DateTime, default=datetime.now())
+    created_at = db.Column(db.DateTime, default=datetime.now())
+    updated_at = db.Column(db.DateTime, default=datetime.now(), onupdate=datetime.now())
     
     def __repr__(self):
         return f'<JiraTask {self.jira_key}: {self.summary}>'

@@ -47,7 +47,7 @@ class JiraService:
                     for key, value in task_data.items():
                         if hasattr(existing_task, key):
                             setattr(existing_task, key, value)
-                    existing_task.last_synced = datetime.utcnow()
+                    existing_task.last_synced = datetime.now()
                 else:
                     # Create new task
                     new_task = JiraTask(**task_data)
