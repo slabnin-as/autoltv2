@@ -24,6 +24,9 @@ def create_app(config_class=Config):
     from app.blueprints.jobs import bp as jobs_bp
     app.register_blueprint(jobs_bp, url_prefix='/jobs')
     
+    from app.blueprints.jenkins_configs import bp as jenkins_configs_bp
+    app.register_blueprint(jenkins_configs_bp, url_prefix='/jenkins-configs')
+    
     return app
 
 from app import models

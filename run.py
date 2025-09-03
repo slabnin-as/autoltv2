@@ -1,6 +1,6 @@
 import os
 from app import create_app, db
-from app.models import JiraTask, JenkinsJob
+from app.models import JiraTask, JenkinsJob, JenkinsJobConfig
 from config.config import config
 from app.services.scheduler_service import SchedulerService
 
@@ -16,6 +16,7 @@ def make_shell_context():
         'db': db,
         'JiraTask': JiraTask,
         'JenkinsJob': JenkinsJob,
+        'JenkinsJobConfig': JenkinsJobConfig,
         'scheduler': scheduler_service
     }
 

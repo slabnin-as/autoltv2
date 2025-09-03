@@ -1,7 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git stash:*)",
+      "Bash(source:*)",
+      "Bash(python3:*)",
+      "Bash(timeout:*)",
+      "Bash(git commit:*)",
+      "Bash(git pull:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []
