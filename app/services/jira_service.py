@@ -13,7 +13,8 @@ class JiraService:
         try:
             self.jira = JIRA(
                 server=Config.JIRA_URL,
-                basic_auth=(Config.JIRA_USERNAME, Config.JIRA_API_TOKEN)
+                token_auth=Config.JIRA_API_TOKEN,
+                options={'verify': False}
             )
         except Exception as e:
             print(f"Failed to connect to Jira: {e}")

@@ -58,7 +58,7 @@ def sync_tasks():
     
     return redirect(url_for('tasks.list_tasks'))
 
-@bp.route('/sync-ekplt', methods=['POST'])
+@bp.route('/sync-ekplt', methods=['POST', 'GET'])
 def sync_ekplt_tasks():
     """Sync EKPLT tasks with autolt label and planned_start >= today"""
     max_results = request.form.get('max_results', 100, type=int)
