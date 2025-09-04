@@ -142,6 +142,51 @@ class JiraService:
             print(f"Error getting field info: {e}")
             return None
     
+    def update_task_status_and_timing(self, jira_key: str, planned_start: datetime, planned_end: datetime) -> bool:
+        """
+        Update JIRA task status to 'In Progress' and set planned_start/planned_end fields
+        """
+        if not self.jira:
+            return False
+        
+        try:
+            issue = self.jira.issue(jira_key)
+            
+            # Update status to 'In Progress'
+            # First, get available transitions
+            transitions = self.jira.transitions(issue)
+            in_progress_transition = None
+            
+            for transition in transitions:
+                if 'In Progress' in transition['name'] or 'in progress' in transition['name'].lower():
+                    in_progress_transition = transition
+                    break
+            
+            if in_progress_transition:
+                self.jira.transition_issue(issue, in_progress_transition['id'])
+                print(f"✅ Updated {jira_key} status to 'In Progress'")
+            else:
+                print(f"⚠️ No 'In Progress' transition found for {jira_key}")
+            
+            # Update custom fields for planned_start and planned_end
+            # Note: These field IDs may need to be adjusted based on your JIRA configuration
+            fields_update = {}
+            
+            # Assuming customfield_10000 is planned_start
+            fields_update['customfield_10000'] = planned_start.strftime('%Y-%m-%dT%H:%M:%S.000+0000')
+            
+            # Assuming customfield_10001 is planned_end (if exists)
+            # fields_update['customfield_10001'] = planned_end.strftime('%Y-%m-%dT%H:%M:%S.000+0000')
+            
+            issue.update(fields=fields_update)
+            print(f"✅ Updated {jira_key} timing: Start={planned_start}")
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ Failed to update JIRA task {jira_key}: {e}")
+            return False
+    
     def _issue_to_dict(self, issue):
         created_date = None
         updated_date = None

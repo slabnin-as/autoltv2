@@ -51,6 +51,11 @@
                             Sync EKPLT Tasks
                         </button>
                     </form>
+                    <form action="{{ url_for('tasks.schedule_tasks') }}" method="POST" style="flex: 1;">
+                        <button type="submit" class="btn btn-success w-100">
+                            Schedule Tasks
+                        </button>
+                    </form>
                     <a href="{{ url_for('jobs.list_jobs') }}" class="btn btn-outline-secondary" style="flex: 1;">
                         Jenkins Jobs
                     </a>

@@ -3,6 +3,8 @@ from sqlalchemy import or_
 from app import db
 from app.models.jira_task import JiraTask
 from app.services.jira_service import JiraService
+from app.services.task_scheduler_service import TaskSchedulerService
+from app.services.auto_task_service import AutoTaskService
 
 bp = Blueprint('tasks', __name__)
 
@@ -126,3 +128,47 @@ def api_update_task(task_id):
     
     db.session.commit()
     return jsonify(task.to_dict())
+
+@bp.route('/schedule-tasks', methods=['POST'])
+def schedule_tasks():
+    """Schedule open tasks in available time slots"""
+    scheduler = TaskSchedulerService()
+    result = scheduler.schedule_next_tasks()
+    
+    flash(result['message'], 'success' if result['scheduled'] > 0 else 'info')
+    return redirect(url_for('tasks.list_tasks'))
+
+@bp.route('/api/schedule-tasks', methods=['POST'])
+def api_schedule_tasks():
+    """API endpoint for task scheduling"""
+    scheduler = TaskSchedulerService()
+    result = scheduler.schedule_next_tasks()
+    return jsonify(result)
+
+@bp.route('/api/scheduling-status')
+def api_scheduling_status():
+    """API endpoint to get scheduling status"""
+    scheduler = TaskSchedulerService()
+    status = scheduler.get_scheduling_status()
+    return jsonify(status)
+
+@bp.route('/api/auto-sync-and-schedule', methods=['POST'])
+def api_auto_sync_and_schedule():
+    """API endpoint for automated sync and scheduling (for cron)"""
+    auto_service = AutoTaskService()
+    result = auto_service.sync_and_schedule_tasks()
+    return jsonify(result)
+
+@bp.route('/api/auto-sync-only', methods=['POST'])
+def api_auto_sync_only():
+    """API endpoint for sync only (for cron)"""
+    auto_service = AutoTaskService()
+    result = auto_service.sync_tasks_only()
+    return jsonify(result)
+
+@bp.route('/api/auto-schedule-only', methods=['POST'])
+def api_auto_schedule_only():
+    """API endpoint for scheduling only (for cron)"""
+    auto_service = AutoTaskService()
+    result = auto_service.schedule_tasks_only()
+    return jsonify(result)
