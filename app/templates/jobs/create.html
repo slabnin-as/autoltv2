@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Создать работу Jenkins - AutoLT v2{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('jobs.list_jobs') }}">Работы Jenkins</a>
+            </li>
+            <li class="breadcrumb-item active">Создать</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">Создать новую работу Jenkins</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="job_name" class="form-label">Название работы *</label>
+                        <input type="text" class="form-control" id="job_name" name="job_name" required
+                               placeholder="deploy-production-app">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="job_path" class="form-label">Путь работы *</label>
+                        <input type="text" class="form-control" id="job_path" name="job_path" required
+                               placeholder="/job/project/job/deploy-production-app">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="project" class="form-label">Проект *</label>
+                        <input type="text" class="form-control" id="project" name="project" required
+                               placeholder="EKPLT">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="project_url" class="form-label">URL Jenkins сервера *</label>
+                        <input type="url" class="form-control" id="project_url" name="project_url" required
+                               placeholder="https://jenkins.company.ru">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Описание</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"
+                                  placeholder="Описание назначения этой работы Jenkins"></textarea>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('jobs.list_jobs') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Отмена
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Создать работу
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

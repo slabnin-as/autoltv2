@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Работы Jenkins - AutoLT v2{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Работы Jenkins</h2>
+    <a href="{{ url_for('jobs.create_job') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Добавить работу
+    </a>
+</div>
+
+{% if jobs.items %}
+<div class="row">
+    {% for job in jobs.items %}
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">{{ job.job_name }}</h6>
+                <span class="badge bg-primary">{{ job.project }}</span>
+            </div>
+            <div class="card-body">
+                {% if job.description %}
+                    <p class="card-text small text-muted">{{ job.description[:100] }}{% if job.description|length > 100 %}...{% endif %}</p>
+                {% endif %}
+                
+                <div class="small text-muted mb-3">
+                    <strong>Путь:</strong> {{ job.job_path }}<br>
+                    <strong>URL:</strong> {{ job.project_url }}
+                </div>
+                
+                <div class="btn-group w-100">
+                    <a href="{{ url_for('jobs.job_detail', job_id=job.id) }}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-eye"></i> Детали
+                    </a>
+                    <form action="{{ url_for('jobs.trigger_job', job_id=job.id) }}" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-success btn-sm">
+                            <i class="fas fa-play"></i> Запустить
+                        </button>
+                    </form>
+                    <a href="{{ url_for('jobs.edit_job', job_id=job.id) }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-edit"></i> Изменить
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<nav class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if jobs.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('jobs.list_jobs', page=jobs.prev_num) }}">
+                    Предыдущая
+                </a>
+            </li>
+        {% endif %}
+        
+        {% for page_num in jobs.iter_pages() %}
+            {% if page_num %}
+                {% if page_num != jobs.page %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('jobs.list_jobs', page=page_num) }}">
+                            {{ page_num }}
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ page_num }}</span>
+                    </li>
+                {% endif %}
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">…</span>
+                </li>
+            {% endif %}
+        {% endfor %}
+        
+        {% if jobs.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('jobs.list_jobs', page=jobs.next_num) }}">
+                    Следующая
+                </a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+{% else %}
+<div class="text-center py-5">
+    <i class="fas fa-play-circle fa-3x text-muted mb-3"></i>
+    <h4 class="text-muted">Работы Jenkins не найдены</h4>
+    <p class="text-muted">Добавьте конфигурацию работы Jenkins</p>
+    <a href="{{ url_for('jobs.create_job') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Добавить первую работу
+    </a>
+</div>
+{% endif %}
+{% endblock %}

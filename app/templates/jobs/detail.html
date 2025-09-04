@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}{{ job.job_name }} - AutoLT v2{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('jobs.list_jobs') }}">Работы Jenkins</a>
+            </li>
+            <li class="breadcrumb-item active">{{ job.job_name }}</li>
+        </ol>
+    </nav>
+    <div class="btn-group">
+        <form action="{{ url_for('jobs.trigger_job', job_id=job.id) }}" method="POST" class="d-inline">
+            <button type="submit" class="btn btn-success">
+                <i class="fas fa-play"></i> Запустить
+            </button>
+        </form>
+        <a href="{{ url_for('jobs.edit_job', job_id=job.id) }}" class="btn btn-outline-secondary">
+            <i class="fas fa-edit"></i> Изменить
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="mb-0">{{ job.job_name }}</h3>
+                <span class="badge bg-primary">{{ job.project }}</span>
+            </div>
+            <div class="card-body">
+                {% if job.description %}
+                <h6>Описание:</h6>
+                <p>{{ job.description }}</p>
+                {% endif %}
+                
+                <h6>Путь задачи:</h6>
+                <code>{{ job.job_path }}</code>
+                
+                <h6 class="mt-3">URL проекта:</h6>
+                <a href="{{ job.project_url }}" target="_blank" class="text-decoration-none">
+                    {{ job.project_url }}
+                    <i class="fas fa-external-link-alt small"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Информация о работе</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Проект:</strong><br>
+                    <span class="badge bg-primary">{{ job.project }}</span>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Создано:</strong><br>
+                    <small>{{ job.created_at.strftime('%d.%m.%Y %H:%M') if job.created_at }}</small>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Обновлено:</strong><br>
+                    <small>{{ job.updated_at.strftime('%d.%m.%Y %H:%M') if job.updated_at }}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

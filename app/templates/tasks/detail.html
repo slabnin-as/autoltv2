@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}{{ task.jira_key }} - AutoLT v2{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('tasks.list_tasks') }}">Задачи Jira</a>
+            </li>
+            <li class="breadcrumb-item active">{{ task.jira_key }}</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="mb-0">{{ task.jira_key }}</h3>
+            </div>
+            <div class="card-body">
+                <h4>{{ task.summary }}</h4>
+                
+                {% if task.description %}
+                <div class="mt-3">
+                    <h6>Описание:</h6>
+                    <div class="border rounded p-3 bg-light">
+                        {{ task.description|nl2br|safe }}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if task.labels %}
+                <div class="mt-3">
+                    <h6>Метки:</h6>
+                    {% for label in task.labels %}
+                        <span class="badge bg-info me-1">{{ label }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">Информация о задаче</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>Статус:</strong><br>
+                    <span class="badge bg-secondary">{{ task.status }}</span>
+                </div>
+                
+                {% if task.assignee %}
+                <div class="mb-3">
+                    <strong>Исполнитель:</strong><br>
+                    {{ task.assignee }}
+                </div>
+                {% endif %}
+                
+                {% if task.priority %}
+                <div class="mb-3">
+                    <strong>Приоритет:</strong><br>
+                    <span class="badge 
+                        {% if task.priority == 'High' %}bg-danger
+                        {% elif task.priority == 'Medium' %}bg-warning
+                        {% else %}bg-info
+                        {% endif %}">
+                        {{ task.priority }}
+                    </span>
+                </div>
+                {% endif %}
+                
+                {% if task.planned_start %}
+                <div class="mb-3">
+                    <strong>Планируемый старт:</strong><br>
+                    <small>{{ task.planned_start.strftime('%d.%m.%Y') }}</small>
+                </div>
+                {% endif %}
+                
+                <div class="mb-3">
+                    <strong>Создано:</strong><br>
+                    <small>{{ task.created_at.strftime('%d.%m.%Y %H:%M') if task.created_at }}</small>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Обновлено:</strong><br>
+                    <small>{{ task.updated_at.strftime('%d.%m.%Y %H:%M') if task.updated_at }}</small>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Последняя синхронизация:</strong><br>
+                    <small>{{ task.last_synced.strftime('%d.%m.%Y %H:%M') if task.last_synced }}</small>
+                </div>
+                
+                {% if task.jira_url %}
+                <div class="mt-4">
+                    <a href="{{ task.jira_url }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-external-link-alt"></i> Открыть в Jira
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
