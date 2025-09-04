@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from app.services.jenkins_service import JenkinsService
-from app.models.jenkins_job import JenkinsJob
+from app.models.jenkins_job_config import JenkinsJobConfig
 from app import db
 
 class SchedulerService:

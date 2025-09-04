@@ -1,7 +1,7 @@
 from datetime import datetime
 import jenkins
 from app import db
-from app.models.jenkins_job import JenkinsJob
+from app.models.jenkins_job_config import JenkinsJobConfig
 from config.config import Config
 
 class JenkinsService:

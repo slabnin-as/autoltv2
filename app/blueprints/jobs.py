@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for
 from app import db
-from app.models.jenkins_job import JenkinsJob
+from app.models.jenkins_job_config import JenkinsJobConfig
 from app.services.jenkins_service import JenkinsService
 from app.services.scheduler_service import SchedulerService
 
