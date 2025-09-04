@@ -11,86 +11,63 @@ scheduler_service = SchedulerService()
 @bp.route('/')
 def list_jobs():
     page = request.args.get('page', 1, type=int)
-    jobs = JenkinsJob.query.order_by(JenkinsJob.updated_at.desc()).paginate(
+    jobs = JenkinsJobConfig.query.order_by(JenkinsJobConfig.id.desc()).paginate(
         page=page, per_page=20, error_out=False
     )
     return render_template('jobs/list.html', jobs=jobs)
 
 @bp.route('/<int:job_id>')
 def job_detail(job_id):
-    job = JenkinsJob.query.get_or_404(job_id)
+    job = JenkinsJobConfig.query.get_or_404(job_id)
     return render_template('jobs/detail.html', job=job)
 
 @bp.route('/create', methods=['GET', 'POST'])
 def create_job():
     if request.method == 'POST':
-        job = JenkinsJob(
-            name=request.form['name'],
-            description=request.form.get('description', ''),
-            schedule=request.form.get('schedule', ''),
-            parameters=request.form.get('parameters', {}),
-            is_active=bool(request.form.get('is_active'))
+        job = JenkinsJobConfig(
+            job_name=request.form['job_name'],
+            job_path=request.form['job_path'],
+            project=request.form['project'],
+            project_url=request.form['project_url'],
+            description=request.form.get('description', '')
         )
         
         db.session.add(job)
         db.session.commit()
         
-        # Schedule the job if it has a schedule
-        if job.schedule and job.is_active:
-            job_id = f"jenkins_{job.id}"
-            success, message = scheduler_service.add_scheduled_job(
-                job_id, job.schedule, job.name, job.parameters
-            )
-            if not success:
-                flash(f'Работа создана, но не удалось запланировать: {message}', 'warning')
-            else:
-                flash('Работа успешно создана и запланирована', 'success')
-        else:
-            flash('Работа успешно создана', 'success')
-        
+        flash('Job configuration successfully created', 'success')
         return redirect(url_for('jobs.job_detail', job_id=job.id))
     
     return render_template('jobs/create.html')
 
 @bp.route('/<int:job_id>/edit', methods=['GET', 'POST'])
 def edit_job(job_id):
-    job = JenkinsJob.query.get_or_404(job_id)
+    job = JenkinsJobConfig.query.get_or_404(job_id)
     
     if request.method == 'POST':
-        job.name = request.form['name']
+        job.job_name = request.form['job_name']
+        job.job_path = request.form['job_path']
+        job.project = request.form['project']
+        job.project_url = request.form['project_url']
         job.description = request.form.get('description', '')
-        job.schedule = request.form.get('schedule', '')
-        job.is_active = bool(request.form.get('is_active'))
         
         db.session.commit()
-        
-        # Update schedule
-        scheduler_job_id = f"jenkins_{job.id}"
-        scheduler_service.remove_scheduled_job(scheduler_job_id)
-        
-        if job.schedule and job.is_active:
-            success, message = scheduler_service.add_scheduled_job(
-                scheduler_job_id, job.schedule, job.name, job.parameters
-            )
-            if not success:
-                flash(f'Работа обновлена, но не удалось перепланировать: {message}', 'warning')
-        
-        flash('Работа успешно обновлена', 'success')
+        flash('Job configuration successfully updated', 'success')
         return redirect(url_for('jobs.job_detail', job_id=job.id))
     
     return render_template('jobs/edit.html', job=job)
 
 @bp.route('/<int:job_id>/trigger', methods=['POST'])
 def trigger_job(job_id):
-    job = JenkinsJob.query.get_or_404(job_id)
+    job = JenkinsJobConfig.query.get_or_404(job_id)
     jenkins_service = JenkinsService()
     
-    success, message = jenkins_service.trigger_job(job.name, job.parameters)
+    success, message = jenkins_service.trigger_job_by_config(job_id)
     
     if success:
-        flash(f'Работа {job.name} успешно запущена', 'success')
+        flash(f'Job {job.job_name} successfully triggered', 'success')
     else:
-        flash(f'Не удалось запустить работу: {message}', 'error')
+        flash(f'Failed to trigger job: {message}', 'error')
     
     return redirect(url_for('jobs.job_detail', job_id=job.id))
 
@@ -99,7 +76,7 @@ def api_jobs():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
     
-    jobs = JenkinsJob.query.order_by(JenkinsJob.updated_at.desc()).paginate(
+    jobs = JenkinsJobConfig.query.order_by(JenkinsJobConfig.id.desc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
     
@@ -112,10 +89,10 @@ def api_jobs():
 
 @bp.route('/api/jobs/<int:job_id>', methods=['PUT'])
 def api_update_job(job_id):
-    job = JenkinsJob.query.get_or_404(job_id)
+    job = JenkinsJobConfig.query.get_or_404(job_id)
     data = request.get_json()
     
-    allowed_fields = ['name', 'description', 'schedule', 'is_active', 'parameters']
+    allowed_fields = ['job_name', 'job_path', 'project', 'project_url', 'description']
     for field in allowed_fields:
         if field in data:
             setattr(job, field, data[field])
