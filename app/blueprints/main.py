@@ -19,8 +19,8 @@ def index():
 def api_stats():
     stats = {
         'total_tasks': JiraTask.query.count(),
-        'total_jobs': JenkinsJob.query.count(),
-        'active_jobs': JenkinsJob.query.filter_by(is_active=True).count(),
+        'total_jobs': JenkinsJobConfig.query.count(),
+        'active_jobs': JenkinsJobConfig.query.filter_by(is_active=True).count(),
         'task_statuses': {}
     }
     
