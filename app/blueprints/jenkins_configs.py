@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, flash, redirect,
 from sqlalchemy import or_
 from app import db
 from app.models.jenkins_job_config import JenkinsJobConfig
-from app.services.multi_jenkins_service import MultiJenkinsService
+from app.services.jenkins_service import JenkinsService
 
 bp = Blueprint('jenkins_configs', __name__)
 
@@ -40,7 +40,7 @@ def list_configs():
 def api_list_configs():
     """API endpoint to list Jenkins configurations"""
     project = request.args.get('project')
-    jenkins_service = MultiJenkinsService()
+    jenkins_service = JenkinsService()
     
     configs = jenkins_service.get_all_configs(project=project)
     
@@ -52,7 +52,7 @@ def api_list_configs():
 @bp.route('/api/projects')
 def api_list_projects():
     """API endpoint to list all projects"""
-    jenkins_service = MultiJenkinsService()
+    jenkins_service = JenkinsService()
     projects = jenkins_service.get_all_projects()
     
     return jsonify({'projects': projects})
@@ -135,7 +135,7 @@ def api_trigger_job(config_id):
     data = request.get_json() or {}
     parameters = data.get('parameters', {})
     
-    jenkins_service = MultiJenkinsService()
+    jenkins_service = JenkinsService()
     success, result = jenkins_service.trigger_job_by_config(config_id, parameters)
     
     if success:
@@ -146,7 +146,7 @@ def api_trigger_job(config_id):
 @bp.route('/api/status/<int:config_id>')
 def api_get_job_status(config_id):
     """API endpoint to get job status"""
-    jenkins_service = MultiJenkinsService()
+    jenkins_service = JenkinsService()
     status = jenkins_service.get_job_status(config_id)
     
     return jsonify(status)

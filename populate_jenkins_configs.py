@@ -5,7 +5,7 @@ Script to populate jenkins_job_configs table with simple test data
 import os
 from app import create_app, db
 from app.models.jenkins_job_config import JenkinsJobConfig
-from app.services.multi_jenkins_service import MultiJenkinsService
+from app.services.jenkins_service import JenkinsService
 from config.config import config as app_config
 
 def create_jenkins_test_configs():
@@ -20,7 +20,7 @@ def create_jenkins_test_configs():
         db.session.commit()
         
         # Test Jenkins connectivity 
-        jenkins_service = MultiJenkinsService()
+        jenkins_service = JenkinsService()
         
         # Create simple job configurations
         print("📝 Creating job configurations...")
@@ -140,7 +140,7 @@ if __name__ == '__main__':
     app = create_app(app_config[config_name])
     
     with app.app_context():
-        jenkins_service = MultiJenkinsService()
+        jenkins_service = JenkinsService()
     
     # Create test configurations
     create_jenkins_test_configs()
