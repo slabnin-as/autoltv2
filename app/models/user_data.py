@@ -1,5 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime
-from sqlalchemy.sql import func
+from sqlalchemy import Column, Integer, String, Text
 from app import db
 
 class UserData(db.Model):
@@ -9,8 +8,6 @@ class UserData(db.Model):
     service = Column(String(50), nullable=False, index=True)
     name = Column(String(100), nullable=True)
     token = Column(Text, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
     def __repr__(self):
         return f'<UserData {self.service}:{self.name}>'

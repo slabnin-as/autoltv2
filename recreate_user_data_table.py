@@ -1,28 +1,33 @@
 #!/usr/bin/env python3
 """
-Script to create user_data table directly
+Script to recreate user_data table without timestamps
 """
 import os
 from app import create_app, db
 from app.models.user_data import UserData
 from config.config import config as app_config
 
-def create_user_data_table():
-    """Create user_data table"""
+def recreate_user_data_table():
+    """Drop and recreate user_data table"""
     config_name = os.getenv('FLASK_ENV', 'development')
     app = create_app(app_config[config_name])
     
     with app.app_context():
-        print("Creating user_data table...")
+        print("Dropping existing user_data table...")
+        with db.engine.connect() as conn:
+            conn.execute(db.text('DROP TABLE IF EXISTS user_data;'))
+            conn.commit()
+        
+        print("Creating new user_data table...")
         db.create_all()
-        print("✅ user_data table created successfully!")
+        print("✅ user_data table recreated successfully!")
         
         # Show table info
-        print("\n📊 Table structure:")
+        print("\n📊 New table structure:")
         print("- id: Integer (Primary Key)")
         print("- service: String(50) - jenkins, jira, etc.")
         print("- name: String(100) - optional username/identifier")
         print("- token: Text - API token/password")
 
 if __name__ == '__main__':
-    create_user_data_table()
+    recreate_user_data_table()
