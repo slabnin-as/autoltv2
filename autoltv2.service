@@ -1,0 +1,28 @@
+[Unit]
+Description=AutoLT v2 - JIRA and Jenkins Task Scheduler
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=notify
+User=rainbow
+Group=rainbow
+WorkingDirectory=/home/rainbow/coding/autoltv2
+Environment=PATH=/home/rainbow/coding/autoltv2/venv/bin
+Environment=FLASK_ENV=production
+EnvironmentFile=/home/rainbow/coding/autoltv2/.env
+ExecStart=/home/rainbow/coding/autoltv2/venv/bin/gunicorn --config gunicorn.conf.py run:app
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
+Restart=on-failure
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=autoltv2
+
+[Install]
+WantedBy=multi-user.target

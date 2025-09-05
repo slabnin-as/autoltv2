@@ -6,6 +6,7 @@ load_dotenv(os.path.join(basedir, '..', '.env'))
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
+    FLASK_ENV = os.environ.get('FLASK_ENV', 'development')
     
     # Database
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \

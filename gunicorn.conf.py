@@ -2,6 +2,14 @@
 """
 Gunicorn configuration for AutoLT v2
 """
+import os
+
+# Get current directory for log files
+current_dir = os.path.dirname(os.path.abspath(__file__))
+log_dir = os.path.join(current_dir, 'log')
+
+# Create log directory if it doesn't exist
+os.makedirs(log_dir, exist_ok=True)
 
 # Server socket
 bind = "0.0.0.0:5000"
@@ -24,13 +32,11 @@ preload_app = True
 # Process naming
 proc_name = "autoltv2"
 
-# Logging
-errorlog = "-"
+# Logging to files in log directory
+errorlog = os.path.join(log_dir, 'gunicorn_error.log')
 loglevel = "info"
-accesslog = "/home/rainbow/coding/autoltv2/logs/autoltv2.log"
-access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"'
-errorlog = "/home/rainbow/coding/autoltv2/logs/error.log"
-capture_outpute = True
+accesslog = os.path.join(log_dir, 'gunicorn_access.log')
+access_log_format = '%(asctime)s [ACCESS] %(h)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
 
 # Process ID file
 pidfile = "/tmp/autoltv2.pid"
@@ -38,11 +44,10 @@ pidfile = "/tmp/autoltv2.pid"
 # Daemon mode
 daemon = False
 
-# User and group to run as
-user = None
-group = None
-
 # Security
 limit_request_line = 4094
 limit_request_fields = 100
 limit_request_field_size = 8190
+
+# Capture output for application logs
+capture_output = True

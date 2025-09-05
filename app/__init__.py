@@ -11,18 +11,44 @@ migrate = Migrate()
 def setup_logging(app):
     """Configure application logging"""
     # Set logging level based on environment
-    if app.config['FLASK_ENV'] == 'production':
+    flask_env = app.config.get('FLASK_ENV', os.getenv('FLASK_ENV', 'development'))
+    if flask_env == 'production':
         log_level = logging.INFO
     else:
         log_level = logging.DEBUG
+    
+    # Create log directory
+    log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'log')
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # Configure logging handlers
+    handlers = []
+    
+    # Console handler for development or if no log directory
+    if flask_env == 'development':
+        handlers.append(logging.StreamHandler())
+    
+    # File handler for production
+    if flask_env == 'production':
+        app_log_file = os.path.join(log_dir, 'app.log')
+        file_handler = logging.FileHandler(app_log_file)
+        file_handler.setFormatter(logging.Formatter(
+            '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+        ))
+        handlers.append(file_handler)
+        
+        # Also log to console in production for systemd capture
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(logging.Formatter(
+            '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+        ))
+        handlers.append(console_handler)
     
     # Configure root logger
     logging.basicConfig(
         level=log_level,
         format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
-        handlers=[
-            logging.StreamHandler(),  # Console output
-        ]
+        handlers=handlers
     )
     
     # Set specific loggers
@@ -36,6 +62,7 @@ def setup_logging(app):
     logging.getLogger('app.models').setLevel(log_level)
     
     app.logger.info(f"🔧 Logging configured at {logging.getLevelName(log_level)} level")
+    app.logger.info(f"📁 Log directory: {log_dir}")
 
 def create_app(config_class=Config):
     app = Flask(__name__)

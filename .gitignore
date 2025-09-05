@@ -156,4 +156,7 @@ cython_debug/
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-Thumbs.db
+Thumbs.db# Log files from AutoLT v2
+log/*.log
+log/*.out  
+log/*.err
