@@ -2,6 +2,7 @@ from datetime import datetime
 import jenkins
 from app import db
 from app.models.jenkins_job_config import JenkinsJobConfig
+from app.models.user_data import UserData
 from config.config import Config
 
 class JenkinsService:
@@ -11,23 +12,47 @@ class JenkinsService:
         self._connect_default()
     
     def _connect_default(self):
-        """Connect to default Jenkins server from config"""
+        """Connect to default Jenkins server using database credentials first"""
         try:
+            # Try to get credentials from database first
+            jenkins_creds = UserData.get_credentials('jenkins')
+            
+            if jenkins_creds:
+                print(f"🔑 Using Jenkins credentials from database for user: {jenkins_creds.name or 'default'}")
+                username = jenkins_creds.name or Config.JENKINS_USERNAME
+                token = jenkins_creds.token
+                jenkins_url = Config.JENKINS_URL
+            else:
+                print("⚠️ No Jenkins credentials in database, using environment variables")
+                username = Config.JENKINS_USERNAME
+                token = Config.JENKINS_TOKEN
+                jenkins_url = Config.JENKINS_URL
+            
             self.default_server = jenkins.Jenkins(
-                Config.JENKINS_URL,
-                username=Config.JENKINS_USERNAME,
-                password=Config.JENKINS_TOKEN
+                jenkins_url,
+                username=username,
+                password=token
             )
             self.default_server.get_whoami()
+            
         except Exception as e:
             print(f"Failed to connect to Jenkins: {e}")
             self.default_server = None
     
     def _get_jenkins_connection(self, jenkins_url, username=None, token=None):
         """Get or create Jenkins connection for specific instance"""
-        # Use provided credentials or fall back to default
-        auth_username = username or Config.JENKINS_USERNAME
-        auth_token = token or Config.JENKINS_TOKEN
+        # Try database credentials first if no specific credentials provided
+        if not username or not token:
+            jenkins_creds = UserData.get_credentials('jenkins')
+            if jenkins_creds:
+                auth_username = username or jenkins_creds.name or Config.JENKINS_USERNAME
+                auth_token = token or jenkins_creds.token
+            else:
+                auth_username = username or Config.JENKINS_USERNAME
+                auth_token = token or Config.JENKINS_TOKEN
+        else:
+            auth_username = username
+            auth_token = token
         
         # Create connection key for caching
         connection_key = f"{jenkins_url}:{auth_username}"

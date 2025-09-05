@@ -13,9 +13,13 @@ def check_environment():
         'SECRET_KEY',
         'DATABASE_URL',
         'JIRA_URL',
+        'JENKINS_URL'
+    ]
+    
+    # These are optional now (can use database credentials)
+    optional_vars = [
         'JIRA_USERNAME', 
         'JIRA_API_TOKEN',
-        'JENKINS_URL',
         'JENKINS_USERNAME',
         'JENKINS_TOKEN'
     ]
@@ -31,6 +35,18 @@ def check_environment():
             print(f"   - {var}")
         print("\nPlease set these variables in .env file or environment")
         return False
+    
+    # Check optional vars and warn if missing
+    missing_optional = []
+    for var in optional_vars:
+        if not os.getenv(var):
+            missing_optional.append(var)
+    
+    if missing_optional:
+        print(f"⚠️ Optional environment variables not set (will use database credentials):")
+        for var in missing_optional:
+            print(f"   - {var}")
+        print("Use local_add_credentials.py to add credentials to database")
     
     return True
 

@@ -2,6 +2,7 @@ from datetime import datetime, date
 from jira import JIRA
 from app import db
 from app.models.jira_task import JiraTask
+from app.models.user_data import UserData
 from config.config import Config
 
 class JiraService:
@@ -10,12 +11,39 @@ class JiraService:
         self._connect()
     
     def _connect(self):
+        """Connect to JIRA using credentials from database first, then fallback to env"""
         try:
-            self.jira = JIRA(
-                server=Config.JIRA_URL,
-                token_auth=Config.JIRA_API_TOKEN,
-                options={'verify': False}
-            )
+            # Try to get credentials from database first
+            jira_creds = UserData.get_credentials('jira')
+            
+            if jira_creds:
+                print(f"🔑 Using JIRA credentials from database for user: {jira_creds.name or 'default'}")
+                jira_url = Config.JIRA_URL  # URL still from config
+                username = jira_creds.name
+                api_token = jira_creds.token
+                
+                # Use basic auth with username if name is provided, otherwise token auth
+                if username:
+                    self.jira = JIRA(
+                        server=jira_url,
+                        basic_auth=(username, api_token),
+                        options={'verify': False}
+                    )
+                else:
+                    self.jira = JIRA(
+                        server=jira_url,
+                        token_auth=api_token,
+                        options={'verify': False}
+                    )
+            else:
+                # Fallback to environment variables
+                print("⚠️ No JIRA credentials in database, using environment variables")
+                self.jira = JIRA(
+                    server=Config.JIRA_URL,
+                    token_auth=Config.JIRA_API_TOKEN,
+                    options={'verify': False}
+                )
+                
         except Exception as e:
             print(f"Failed to connect to Jira: {e}")
             self.jira = None
