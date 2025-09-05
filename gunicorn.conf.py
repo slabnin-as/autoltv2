@@ -27,8 +27,10 @@ proc_name = "autoltv2"
 # Logging
 errorlog = "-"
 loglevel = "info"
-accesslog = "-"
+accesslog = "/home/rainbow/coding/autoltv2/logs/autoltv2.log"
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"'
+errorlog = "/home/rainbow/coding/autoltv2/logs/error.log"
+capture_outpute = True
 
 # Process ID file
 pidfile = "/tmp/autoltv2.pid"
