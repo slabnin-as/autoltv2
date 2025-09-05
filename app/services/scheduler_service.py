@@ -40,7 +40,7 @@ class SchedulerService:
             )
             
             # Update next execution time in database
-            job_record = JenkinsJob.query.filter_by(name=jenkins_job_name).first()
+            job_record = JenkinsJobConfig.query.filter_by(name=jenkins_job_name).first()
             if job_record:
                 next_run = self.scheduler.get_job(job_id).next_run_time
                 job_record.next_execution = next_run
@@ -62,7 +62,7 @@ class SchedulerService:
             success, message = self.jenkins_service.trigger_job(jenkins_job_name, parameters)
             
             # Update job record
-            job_record = JenkinsJob.query.filter_by(name=jenkins_job_name).first()
+            job_record = JenkinsJobConfig.query.filter_by(name=jenkins_job_name).first()
             if job_record:
                 job_record.last_execution = datetime.utcnow()
                 if success:
@@ -84,7 +84,7 @@ class SchedulerService:
         return jobs
     
     def update_job_schedules(self):
-        active_jobs = JenkinsJob.query.filter_by(is_active=True).all()
+        active_jobs = JenkinsJobConfig.query.filter_by(is_active=True).all()
         for job in active_jobs:
             if job.schedule:
                 job_id = f"jenkins_{job.id}"
