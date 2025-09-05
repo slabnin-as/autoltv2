@@ -85,6 +85,10 @@ def create_app(config_class=Config):
     from app.blueprints.jobs import bp as jobs_bp
     app.register_blueprint(jobs_bp, url_prefix='/jobs')
     
+    # Log successful application startup
+    flask_env = app.config.get('FLASK_ENV', os.getenv('FLASK_ENV', 'development'))
+    app.logger.info("🚀 AutoLT v2 приложение запустилось нормально!")
+    app.logger.info(f"🌐 Сервер запущен в режиме: {flask_env}")
     
     return app
 
