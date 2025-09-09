@@ -1,6 +1,9 @@
+import logging
 from datetime import datetime
 from app.services.jira_service import JiraService
 from app.services.task_scheduler_service import TaskSchedulerService
+
+logger = logging.getLogger(__name__)
 
 class AutoTaskService:
     """Service for automated task synchronization and scheduling"""
@@ -15,7 +18,7 @@ class AutoTaskService:
         1. Sync EKPLT tasks from JIRA
         2. Schedule open tasks automatically
         """
-        print(f"🤖 Starting automated task sync and scheduling at {datetime.now()}")
+        logger.info(f"🤖 Starting automated task sync and scheduling at {datetime.now()}")
         
         result = {
             'timestamp': datetime.now().isoformat(),
@@ -26,7 +29,7 @@ class AutoTaskService:
         
         try:
             # Step 1: Sync EKPLT tasks
-            print("📥 Syncing EKPLT tasks from JIRA...")
+            logger.info("📥 Syncing EKPLT tasks from JIRA...")
             synced_count = self.jira_service.sync_ekplt_autolt_tasks(max_results=100)
             result['sync_result'] = {
                 'synced_count': synced_count,
@@ -34,29 +37,29 @@ class AutoTaskService:
             }
             
             if synced_count > 0:
-                print(f"✅ Synced {synced_count} tasks from JIRA")
+                logger.info(f"✅ Synced {synced_count} tasks from JIRA")
             else:
-                print("ℹ️ No new tasks to sync")
+                logger.info("ℹ️ No new tasks to sync")
             
             # Step 2: Schedule open tasks
-            print("📅 Scheduling open tasks...")
+            logger.info("📅 Scheduling open tasks...")
             schedule_result = self.scheduler_service.schedule_next_tasks()
             result['schedule_result'] = schedule_result
             
             if schedule_result['scheduled'] > 0:
-                print(f"✅ Scheduled {schedule_result['scheduled']} tasks")
+                logger.info(f"✅ Scheduled {schedule_result['scheduled']} tasks")
             else:
-                print("ℹ️ No tasks to schedule")
+                logger.info("ℹ️ No tasks to schedule")
             
             result['success'] = True
             result['message'] = f"Synced {synced_count} tasks, scheduled {schedule_result['scheduled']} tasks"
             
         except Exception as e:
-            print(f"❌ Error in automated task processing: {e}")
+            logger.error(f"❌ Error in automated task processing: {e}")
             result['success'] = False
             result['error'] = str(e)
         
-        print(f"🏁 Automation completed: {result['message'] if result['success'] else result.get('error', 'Unknown error')}")
+        logger.info(f"🏁 Automation completed: {result['message'] if result['success'] else result.get('error', 'Unknown error')}")
         return result
     
     def sync_tasks_only(self) -> dict:

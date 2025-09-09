@@ -12,7 +12,7 @@ log_dir = os.path.join(current_dir, 'log')
 os.makedirs(log_dir, exist_ok=True)
 
 # Server socket
-bind = "127.0.0.1:5000"
+bind = "0.0.0.0:5000"
 backlog = 2048
 
 # Worker processes
@@ -36,7 +36,7 @@ proc_name = "autoltv2"
 errorlog = os.path.join(log_dir, 'gunicorn_error.log')
 loglevel = "info"
 accesslog = os.path.join(log_dir, 'gunicorn_access.log')
-access_log_format = '%(asctime)s [ACCESS] %(h)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
+access_log_format = '%(t)s [ACCESS] %(h)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
 
 # Process ID file
 pidfile = "/tmp/autoltv2.pid"

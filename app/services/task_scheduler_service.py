@@ -1,9 +1,12 @@
+import logging
 from datetime import datetime, timedelta
 from app import db
 from app.models.jira_task import JiraTask
 from app.models.scheduler import Scheduler
 from app.services.jira_service import JiraService
 from typing import List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 class TaskSchedulerService:
     """Service for automatic task scheduling in EKPLT project"""
@@ -18,14 +21,14 @@ class TaskSchedulerService:
         Main method to schedule next available tasks
         Returns summary of scheduled tasks
         """
-        print("🔄 Starting task scheduling process...")
+        logger.info("🔄 Starting task scheduling process...")
         
         # 1. Get tasks with status 'Open' ordered by planned_start
         open_tasks = self._get_open_tasks()
         if not open_tasks:
             return {"scheduled": 0, "message": "No open tasks found"}
         
-        print(f"📋 Found {len(open_tasks)} open tasks")
+        logger.info(f"📋 Found {len(open_tasks)} open tasks")
         
         # 2. Schedule each task in available slots
         scheduled_count = 0
@@ -43,14 +46,14 @@ class TaskSchedulerService:
                             "slot_start": slot_time,
                             "slot_end": slot_time + timedelta(hours=self.slot_duration_hours)
                         })
-                        print(f"✅ Scheduled {task.jira_key} for {slot_time}")
+                        logger.info(f"✅ Scheduled {task.jira_key} for {slot_time}")
                     else:
-                        print(f"❌ Failed to schedule {task.jira_key}")
+                        logger.error(f"❌ Failed to schedule {task.jira_key}")
                 else:
-                    print(f"⏰ No available slot found for {task.jira_key}")
+                    logger.warning(f"⏰ No available slot found for {task.jira_key}")
                     break  # No more slots available
             except Exception as e:
-                print(f"❌ Error scheduling {task.jira_key}: {e}")
+                logger.error(f"❌ Error scheduling {task.jira_key}: {e}")
         
         return {
             "scheduled": scheduled_count,
@@ -116,7 +119,7 @@ class TaskSchedulerService:
             # 1. Update JIRA task
             jira_updated = self._update_jira_task(task.jira_key, slot_time, slot_end)
             if not jira_updated:
-                print(f"⚠️ Failed to update JIRA for task {task.jira_key}")
+                logger.warning(f"⚠️ Failed to update JIRA for task {task.jira_key}")
                 return False
             
             # 2. Update local database
@@ -137,7 +140,7 @@ class TaskSchedulerService:
             
         except Exception as e:
             db.session.rollback()
-            print(f"❌ Error scheduling task {task.jira_key}: {e}")
+            logger.error(f"❌ Error scheduling task {task.jira_key}: {e}")
             return False
     
     def _update_jira_task(self, jira_key: str, planned_start: datetime, planned_end: datetime) -> bool:
@@ -148,7 +151,7 @@ class TaskSchedulerService:
         try:
             return self.jira_service.update_task_status_and_timing(jira_key, planned_start, planned_end)
         except Exception as e:
-            print(f"❌ JIRA update failed for {jira_key}: {e}")
+            logger.error(f"❌ JIRA update failed for {jira_key}: {e}")
             return False
     
     def get_scheduling_status(self) -> dict:
