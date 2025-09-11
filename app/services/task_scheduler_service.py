@@ -82,8 +82,8 @@ class TaskSchedulerService:
         if now.hour >= 23:
             current_date = current_date + timedelta(days=1)
         
-        # Check next 30 days for available slots
-        for day_offset in range(30):
+        # Check next 14 days for available slots
+        for day_offset in range(14):
             check_date = current_date + timedelta(days=day_offset)
             slot_start = datetime.combine(check_date, datetime.min.time()) + timedelta(hours=self.start_hour)
             slot_end = slot_start + timedelta(hours=self.slot_duration_hours)
@@ -96,16 +96,27 @@ class TaskSchedulerService:
     
     def _is_slot_available(self, slot_start: datetime, slot_end: datetime) -> bool:
         """
-        Check if time slot is available (no overlapping scheduled tasks)
+        Check if time slot is available (no overlapping scheduled tasks in JIRA EKPLT project)
         """
-        # Check scheduler table for overlapping tasks
-        overlapping_tasks = Scheduler.query.filter(
-            Scheduler.status.in_(['ready', 'running']),
-            Scheduler.planned_start < slot_end,
-            (Scheduler.planned_start + timedelta(hours=self.slot_duration_hours)) > slot_start
-        ).count()
+        # Get all EKPLT tasks in the period covering our slot
+        period_start = slot_start.date()
+        period_end = slot_end.date()
         
-        return overlapping_tasks == 0
+        # Get tasks from JIRA for the period
+        jira_tasks = self.jira_service.get_ekplt_tasks_in_period(period_start, period_end)
+        
+        # Check for overlapping tasks
+        for task in jira_tasks:
+            if task['planned_start']:
+                task_start = task['planned_start']
+                task_end = task_start + timedelta(hours=self.slot_duration_hours)
+                
+                # Check if there's overlap between our slot and existing task
+                if (task_start < slot_end and task_end > slot_start):
+                    logger.info(f"⚠️ Slot {slot_start} conflicts with existing task {task['jira_key']} at {task_start}")
+                    return False
+        
+        return True
     
     def _schedule_task(self, task: JiraTask, slot_time: datetime) -> bool:
         """

@@ -146,6 +146,55 @@ class JiraService:
             print(f"Error syncing EKPLT autolt tasks: {e}")
             return 0
     
+    def get_ekplt_tasks_in_period(self, start_date, end_date):
+        """
+        Get all EKPLT tasks with planned_start in specified period
+        Returns list of tasks with their planned_start times for slot checking
+        """
+        if not self.jira:
+            return []
+        
+        try:
+            # Format dates for JQL
+            start_str = start_date.strftime('%Y-%m-%d')
+            end_str = end_date.strftime('%Y-%m-%d')
+            
+            # Build JQL query for all EKPLT tasks in the period
+            jql_query = (
+                f'project = EKPLT AND '
+                f'cf[10000] >= "{start_str}" AND '
+                f'cf[10000] <= "{end_str}" '
+                f'ORDER BY cf[10000] ASC'
+            )
+            
+            logger.info(f"🔍 Checking JIRA for EKPLT tasks in period {start_str} to {end_str}")
+            
+            # Execute search
+            issues = self.jira.search_issues(jql_query, maxResults=500)  # Get more results for slot checking
+            
+            tasks_data = []
+            for issue in issues:
+                planned_start_field = getattr(issue.fields, 'customfield_10000', None)
+                if planned_start_field:
+                    # Parse the planned_start datetime
+                    if isinstance(planned_start_field, str):
+                        planned_start = datetime.fromisoformat(planned_start_field.replace('Z', '+00:00'))
+                    else:
+                        planned_start = planned_start_field
+                    
+                    tasks_data.append({
+                        'jira_key': issue.key,
+                        'planned_start': planned_start.replace(tzinfo=None) if hasattr(planned_start, 'replace') else planned_start,
+                        'status': str(issue.fields.status)
+                    })
+            
+            logger.info(f"📋 Found {len(tasks_data)} EKPLT tasks in the specified period")
+            return tasks_data
+            
+        except Exception as e:
+            logger.error(f"❌ Error getting EKPLT tasks for period: {e}")
+            return []
+    
     def get_jira_fields_info(self, issue_key='EKPLT-1'):
         """
         Debug method to get information about available fields in Jira
