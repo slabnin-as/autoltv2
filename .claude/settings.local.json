@@ -8,7 +8,8 @@
       "Bash(timeout:*)",
       "Bash(git commit:*)",
       "Bash(git pull:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(flask db:*)"
     ],
     "deny": [],
     "ask": []

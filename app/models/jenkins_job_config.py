@@ -10,6 +10,7 @@ class JenkinsJobConfig(db.Model):
     project = db.Column(db.String(200), nullable=False)
     project_url = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
+    pipeline = db.Column(db.String(50), nullable=True)  # EKP, INFOSRV
     
     def __repr__(self):
         return f'<JenkinsJobConfig {self.job_name}>'
@@ -21,5 +22,6 @@ class JenkinsJobConfig(db.Model):
             'job_path': self.job_path,
             'project': self.project,
             'project_url': self.project_url,
-            'description': self.description
+            'description': self.description,
+            'pipeline': self.pipeline
         }

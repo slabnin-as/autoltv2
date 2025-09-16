@@ -8,6 +8,7 @@ class Scheduler(db.Model):
     jira_task = Column(String(50), nullable=False, index=True)
     planned_start = Column(DateTime, nullable=True)
     status = Column(String(20), nullable=True)
+    pipeline = Column(String(20), nullable=True)  # EKP, INFOSRV
     stage_before_start = Column(DateTime, nullable=True)
     stage_before_end = Column(DateTime, nullable=True)
     stage_deploy_start = Column(DateTime, nullable=True)

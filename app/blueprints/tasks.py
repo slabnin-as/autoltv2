@@ -5,6 +5,7 @@ from app.models.jira_task import JiraTask
 from app.services.jira_service import JiraService
 from app.services.task_scheduler_service import TaskSchedulerService
 from app.services.auto_task_service import AutoTaskService
+from app.services.autolt_service import AutoLTService
 
 bp = Blueprint('tasks', __name__)
 
@@ -164,6 +165,13 @@ def api_auto_sync_only():
     """API endpoint for sync only (for cron)"""
     auto_service = AutoTaskService()
     result = auto_service.sync_tasks_only()
+    return jsonify(result)
+
+@bp.route('/api/autolt-process', methods=['POST'])
+def api_autolt_process():
+    """API endpoint for AutoLT process execution (for cron)"""
+    autolt_service = AutoLTService()
+    result = autolt_service.run_autolt_process()
     return jsonify(result)
 
 @bp.route('/api/auto-schedule-only', methods=['POST'])

@@ -109,6 +109,36 @@ class JenkinsService:
         except Exception as e:
             return False, f"Failed to trigger job: {e}"
     
+    def get_job_info(self, job_name):
+        """Get job information from default Jenkins server"""
+        if not self.default_server:
+            return None
+        
+        try:
+            return self.default_server.get_job_info(job_name)
+        except Exception as e:
+            logger.warning(f"⚠️ Could not get job info for {job_name}: {e}")
+            return None
+    
+    def stop_job(self, job_name, build_number=None):
+        """Stop a running job"""
+        if not self.default_server:
+            return False, "Default Jenkins connection not available"
+        
+        try:
+            if build_number:
+                self.default_server.stop_build(job_name, build_number)
+            else:
+                # Get the latest build number
+                job_info = self.default_server.get_job_info(job_name)
+                if job_info and 'lastBuild' in job_info and job_info['lastBuild']:
+                    last_build = job_info['lastBuild']['number']
+                    self.default_server.stop_build(job_name, last_build)
+            
+            return True, f"Job {job_name} stopped successfully"
+        except Exception as e:
+            return False, f"Failed to stop job: {e}"
+    
     def get_all_configs(self, project=None):
         """Get all job configurations, optionally filtered by project"""
         query = JenkinsJobConfig.query
