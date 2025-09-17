@@ -16,16 +16,27 @@ class AutoLTService:
     
     def run_autolt_process(self):
         """
-        Main AutoLT process - checks for ready tasks and executes pipeline
+        Main AutoLT process - checks for ready tasks scheduled for current hour
         """
         logger.info("🤖 Starting AutoLT process...")
-        
-        # Find tasks with status 'ready'
-        ready_tasks = Scheduler.query.filter_by(status='ready').all()
-        
+
+        # Get current time rounded to the hour
+        now = datetime.utcnow()
+        current_hour = now.replace(minute=0, second=0, microsecond=0)
+        next_hour = current_hour + timedelta(hours=1)
+
+        logger.info(f"🕐 Looking for tasks scheduled for {current_hour.strftime('%Y-%m-%d %H:%M')}")
+
+        # Find tasks with status 'ready' and planned_start matching current hour
+        ready_tasks = Scheduler.query.filter(
+            Scheduler.status == 'ready',
+            Scheduler.planned_start >= current_hour,
+            Scheduler.planned_start < next_hour
+        ).all()
+
         if not ready_tasks:
-            logger.info("ℹ️ No ready tasks found")
-            return {"message": "No ready tasks found", "processed": 0}
+            logger.info("ℹ️ No ready tasks found for current hour")
+            return {"message": "No ready tasks found for current hour", "processed": 0}
         
         logger.info(f"📋 Found {len(ready_tasks)} ready tasks")
         processed_count = 0
