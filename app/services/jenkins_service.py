@@ -9,21 +9,33 @@ class JenkinsService:
     def __init__(self):
         self.connections = {}  # Cache for multiple Jenkins connections
         self.default_server = None
-        self._connect_default()
+        self._default_connected = False
     
-    def _connect_default(self):
+    def _ensure_default_connection(self):
+        """Ensure default connection is established"""
+        if not self._default_connected:
+            self._connect_default()
+
+    def _connect_default(self, jenkins_service='jenkins'):
         """Connect to default Jenkins server using database credentials first"""
         try:
             # Try to get credentials from database first
-            jenkins_creds = UserData.get_credentials('jenkins')
-            
+            jenkins_creds = None
+            try:
+                jenkins_creds = UserData.get_credentials(jenkins_service)
+                if not jenkins_creds and jenkins_service != 'jenkins':
+                    # Fallback to generic jenkins if specific service not found
+                    jenkins_creds = UserData.get_credentials('jenkins')
+            except Exception as e:
+                print(f"⚠️ Could not access database for Jenkins credentials: {e}")
+
             if jenkins_creds:
-                print(f"🔑 Using Jenkins credentials from database for user: {jenkins_creds.name or 'default'}")
+                print(f"🔑 Using Jenkins credentials from database for service: {jenkins_service}, user: {jenkins_creds.name or 'default'}")
                 username = jenkins_creds.name or Config.JENKINS_USERNAME
                 token = jenkins_creds.token
                 jenkins_url = Config.JENKINS_URL
             else:
-                print("⚠️ No Jenkins credentials in database, using environment variables")
+                print(f"⚠️ No Jenkins credentials found for service {jenkins_service}, using environment variables")
                 username = Config.JENKINS_USERNAME
                 token = Config.JENKINS_TOKEN
                 jenkins_url = Config.JENKINS_URL
@@ -34,16 +46,29 @@ class JenkinsService:
                 password=token
             )
             self.default_server.get_whoami()
-            
+            self._default_connected = True
+
         except Exception as e:
             print(f"Failed to connect to Jenkins: {e}")
             self.default_server = None
+            self._default_connected = False
     
-    def _get_jenkins_connection(self, jenkins_url, username=None, token=None):
+    def _get_jenkins_connection(self, jenkins_url, username=None, token=None, jenkins_service=None):
         """Get or create Jenkins connection for specific instance"""
         # Try database credentials first if no specific credentials provided
         if not username or not token:
-            jenkins_creds = UserData.get_credentials('jenkins')
+            jenkins_creds = None
+            try:
+                # Try to find credentials by jenkins service name (jenkins_ltcbp, jenkins_ekp, jenkins_report)
+                if jenkins_service:
+                    jenkins_creds = UserData.get_credentials(jenkins_service)
+
+                # If no specific credentials found, try default jenkins service
+                if not jenkins_creds:
+                    jenkins_creds = UserData.get_credentials('jenkins')
+            except Exception as e:
+                print(f"⚠️ Could not access database for Jenkins credentials: {e}")
+
             if jenkins_creds:
                 auth_username = username or jenkins_creds.name or Config.JENKINS_USERNAME
                 auth_token = token or jenkins_creds.token
@@ -96,6 +121,7 @@ class JenkinsService:
     
     def trigger_job(self, job_name, parameters=None):
         """Trigger job on default Jenkins server"""
+        self._ensure_default_connection()
         if not self.default_server:
             return False, "Default Jenkins connection not available"
         
@@ -111,6 +137,7 @@ class JenkinsService:
     
     def get_job_info(self, job_name):
         """Get job information from default Jenkins server"""
+        self._ensure_default_connection()
         if not self.default_server:
             return None
         
@@ -122,6 +149,7 @@ class JenkinsService:
     
     def stop_job(self, job_name, build_number=None):
         """Stop a running job"""
+        self._ensure_default_connection()
         if not self.default_server:
             return False, "Default Jenkins connection not available"
         
@@ -180,13 +208,14 @@ class JenkinsService:
         except Exception as e:
             return {"error": "Could not retrieve job status"}
     
-    def get_job_info(self, job_name, jenkins_url=None):
+    def get_job_info_with_url(self, job_name, jenkins_url=None):
         """Get job info from specific or default Jenkins"""
         if jenkins_url:
             jenkins_conn = self._get_jenkins_connection(jenkins_url)
         else:
+            self._ensure_default_connection()
             jenkins_conn = self.default_server
-            
+
         if not jenkins_conn:
             return None
         
@@ -201,8 +230,9 @@ class JenkinsService:
         if jenkins_url:
             jenkins_conn = self._get_jenkins_connection(jenkins_url)
         else:
+            self._ensure_default_connection()
             jenkins_conn = self.default_server
-            
+
         if not jenkins_conn:
             return None
         
@@ -217,8 +247,9 @@ class JenkinsService:
         if jenkins_url:
             jenkins_conn = self._get_jenkins_connection(jenkins_url)
         else:
+            self._ensure_default_connection()
             jenkins_conn = self.default_server
-            
+
         if not jenkins_conn:
             return []
         
@@ -227,3 +258,57 @@ class JenkinsService:
         except Exception as e:
             print(f"Error listing Jenkins jobs: {e}")
             return []
+
+    # Convenience methods for specific Jenkins services
+    def trigger_job_ltcbp(self, job_name, parameters=None):
+        """Trigger job on LTCBP Jenkins server"""
+        jenkins_creds = UserData.get_credentials('jenkins_ltcbp')
+        if jenkins_creds:
+            jenkins_conn = self._get_jenkins_connection(
+                jenkins_url=Config.JENKINS_URL,  # или URL для LTCBP
+                jenkins_service='jenkins_ltcbp'
+            )
+            if jenkins_conn:
+                try:
+                    if parameters:
+                        jenkins_conn.build_job(job_name, parameters)
+                    else:
+                        jenkins_conn.build_job(job_name)
+                    return True, f"Job {job_name} triggered on LTCBP Jenkins"
+                except Exception as e:
+                    return False, f"Failed to trigger job on LTCBP: {e}"
+        return False, "LTCBP Jenkins connection not available"
+
+    def trigger_job_ekp(self, job_name, parameters=None):
+        """Trigger job on EKP Jenkins server"""
+        try:
+            jenkins_conn = self._get_jenkins_connection(
+                jenkins_url=Config.JENKINS_URL,  # или URL для EKP
+                jenkins_service='jenkins_ekp'
+            )
+            if jenkins_conn:
+                if parameters:
+                    jenkins_conn.build_job(job_name, parameters)
+                else:
+                    jenkins_conn.build_job(job_name)
+                return True, f"Job {job_name} triggered on EKP Jenkins"
+        except Exception as e:
+            return False, f"Failed to trigger job on EKP: {e}"
+        return False, "EKP Jenkins connection not available"
+
+    def trigger_job_report(self, job_name, parameters=None):
+        """Trigger job on Report Jenkins server"""
+        try:
+            jenkins_conn = self._get_jenkins_connection(
+                jenkins_url=Config.JENKINS_URL,  # или URL для Report
+                jenkins_service='jenkins_report'
+            )
+            if jenkins_conn:
+                if parameters:
+                    jenkins_conn.build_job(job_name, parameters)
+                else:
+                    jenkins_conn.build_job(job_name)
+                return True, f"Job {job_name} triggered on Report Jenkins"
+        except Exception as e:
+            return False, f"Failed to trigger job on Report: {e}"
+        return False, "Report Jenkins connection not available"
