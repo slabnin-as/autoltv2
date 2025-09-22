@@ -1,9 +1,12 @@
+import logging
 from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from app.services.jenkins_service import JenkinsService
 from app.models.jenkins_job_config import JenkinsJobConfig
 from app import db
+
+logger = logging.getLogger(__name__)
 
 class SchedulerService:
     def __init__(self):
@@ -69,9 +72,9 @@ class SchedulerService:
                     job_record.last_build_status = "TRIGGERED"
                 db.session.commit()
             
-            print(f"Scheduled job execution: {jenkins_job_name} - {message}")
+            logger.info(f"Scheduled job execution: {jenkins_job_name} - {message}")
         except Exception as e:
-            print(f"Error executing scheduled job {jenkins_job_name}: {e}")
+            logger.error(f"Error executing scheduled job {jenkins_job_name}: {e}")
     
     def get_scheduled_jobs(self):
         jobs = []

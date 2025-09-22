@@ -1,9 +1,12 @@
+import logging
 from datetime import datetime
 import jenkins
 from app import db
 from app.models.jenkins_job_config import JenkinsJobConfig
 from app.models.user_data import UserData
 from config.config import Config
+
+logger = logging.getLogger(__name__)
 
 class JenkinsService:
     def __init__(self):
@@ -27,15 +30,15 @@ class JenkinsService:
                     # Fallback to generic jenkins if specific service not found
                     jenkins_creds = UserData.get_credentials('jenkins')
             except Exception as e:
-                print(f"⚠️ Could not access database for Jenkins credentials: {e}")
+                logger.warning(f"⚠️ Could not access database for Jenkins credentials: {e}")
 
             if jenkins_creds:
-                print(f"🔑 Using Jenkins credentials from database for service: {jenkins_service}, user: {jenkins_creds.name or 'default'}")
+                logger.info(f"🔑 Using Jenkins credentials from database for service: {jenkins_service}, user: {jenkins_creds.name or 'default'}")
                 username = jenkins_creds.name or Config.JENKINS_USERNAME
                 token = jenkins_creds.token
                 jenkins_url = Config.JENKINS_URL
             else:
-                print(f"⚠️ No Jenkins credentials found for service {jenkins_service}, using environment variables")
+                logger.warning(f"⚠️ No Jenkins credentials found for service {jenkins_service}, using environment variables")
                 username = Config.JENKINS_USERNAME
                 token = Config.JENKINS_TOKEN
                 jenkins_url = Config.JENKINS_URL
@@ -49,7 +52,7 @@ class JenkinsService:
             self._default_connected = True
 
         except Exception as e:
-            print(f"Failed to connect to Jenkins: {e}")
+            logger.error(f"Failed to connect to Jenkins: {e}")
             self.default_server = None
             self._default_connected = False
     
@@ -67,7 +70,7 @@ class JenkinsService:
                 if not jenkins_creds:
                     jenkins_creds = UserData.get_credentials('jenkins')
             except Exception as e:
-                print(f"⚠️ Could not access database for Jenkins credentials: {e}")
+                logger.warning(f"⚠️ Could not access database for Jenkins credentials: {e}")
 
             if jenkins_creds:
                 auth_username = username or jenkins_creds.name or Config.JENKINS_USERNAME
@@ -92,7 +95,7 @@ class JenkinsService:
                 # Test connection
                 self.connections[connection_key].get_whoami()
             except Exception as e:
-                print(f"Failed to connect to Jenkins {jenkins_url}: {e}")
+                logger.error(f"Failed to connect to Jenkins {jenkins_url}: {e}")
                 self.connections[connection_key] = None
         
         return self.connections[connection_key]
@@ -222,7 +225,7 @@ class JenkinsService:
         try:
             return jenkins_conn.get_job_info(job_name)
         except Exception as e:
-            print(f"Error getting job info for {job_name}: {e}")
+            logger.error(f"Error getting job info for {job_name}: {e}")
             return None
     
     def get_build_info(self, job_name, build_number, jenkins_url=None):
@@ -239,7 +242,7 @@ class JenkinsService:
         try:
             return jenkins_conn.get_build_info(job_name, build_number)
         except Exception as e:
-            print(f"Error getting build info for {job_name}#{build_number}: {e}")
+            logger.error(f"Error getting build info for {job_name}#{build_number}: {e}")
             return None
     
     def list_jobs(self, jenkins_url=None):
@@ -256,7 +259,7 @@ class JenkinsService:
         try:
             return jenkins_conn.get_jobs()
         except Exception as e:
-            print(f"Error listing Jenkins jobs: {e}")
+            logger.error(f"Error listing Jenkins jobs: {e}")
             return []
 
     # Convenience methods for specific Jenkins services

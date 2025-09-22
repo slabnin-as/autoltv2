@@ -1,9 +1,12 @@
+import logging
 from datetime import datetime, date
 from jira import JIRA
 from app import db
 from app.models.jira_task import JiraTask
 from app.models.user_data import UserData
 from config.config import Config
+
+logger = logging.getLogger(__name__)
 
 class JiraService:
     def __init__(self):
@@ -17,7 +20,7 @@ class JiraService:
             jira_creds = UserData.get_credentials('jira')
             
             if jira_creds:
-                print(f"🔑 Using JIRA credentials from database for user: {jira_creds.name or 'default'}")
+                logger.info(f"🔑 Using JIRA credentials from database for user: {jira_creds.name or 'default'}")
                 jira_url = Config.JIRA_URL  # URL still from config
                 username = jira_creds.name
                 api_token = jira_creds.token
@@ -37,7 +40,7 @@ class JiraService:
                     )
             else:
                 # Fallback to environment variables
-                print("⚠️ No JIRA credentials in database, using environment variables")
+                logger.warning("⚠️ No JIRA credentials in database, using environment variables")
                 self.jira = JIRA(
                     server=Config.JIRA_URL,
                     token_auth=Config.JIRA_API_TOKEN,
@@ -45,7 +48,7 @@ class JiraService:
                 )
                 
         except Exception as e:
-            print(f"Failed to connect to Jira: {e}")
+            logger.error(f"Failed to connect to Jira: {e}")
             self.jira = None
     
     def search_tasks(self, jql_query, max_results=50):
@@ -56,7 +59,7 @@ class JiraService:
             issues = self.jira.search_issues(jql_query, maxResults=max_results)
             return [self._issue_to_dict(issue) for issue in issues]
         except Exception as e:
-            print(f"Error searching Jira tasks: {e}")
+            logger.error(f"Error searching Jira tasks: {e}")
             return []
     
     def sync_tasks_to_db(self, jql_query, max_results=50):
@@ -88,7 +91,7 @@ class JiraService:
             return synced_count
         except Exception as e:
             db.session.rollback()
-            print(f"Error syncing tasks to database: {e}")
+            logger.error(f"Error syncing tasks to database: {e}")
             return 0
     
     def sync_ekplt_autolt_tasks(self, max_results=100):
@@ -107,7 +110,7 @@ class JiraService:
             f'ORDER BY cf[10000] ASC'
         )
         
-        print(f"JQL Query: {jql_query}")
+        logger.info(f"JQL Query: {jql_query}")
         
         try:
             # Use expand to get all fields including custom fields
@@ -135,15 +138,15 @@ class JiraService:
                     db.session.add(new_task)
                 
                 synced_count += 1
-                print(f"Synced: {issue.key} - {task_data['summary']}")
+                logger.info(f"Synced: {issue.key} - {task_data['summary']}")
             
             db.session.commit()
-            print(f"Successfully synced {synced_count} EKPLT autolt tasks")
+            logger.info(f"Successfully synced {synced_count} EKPLT autolt tasks")
             return synced_count
             
         except Exception as e:
             db.session.rollback()
-            print(f"Error syncing EKPLT autolt tasks: {e}")
+            logger.error(f"Error syncing EKPLT autolt tasks: {e}")
             return 0
     
     def get_ekplt_tasks_in_period(self, start_date, end_date):
@@ -216,7 +219,7 @@ class JiraService:
             
             return fields_info
         except Exception as e:
-            print(f"Error getting field info: {e}")
+            logger.error(f"Error getting field info: {e}")
             return None
     
     def update_task_status_and_timing(self, jira_key: str, planned_start: datetime, planned_end: datetime) -> bool:
@@ -241,9 +244,9 @@ class JiraService:
             
             if in_progress_transition:
                 self.jira.transition_issue(issue, in_progress_transition['id'])
-                print(f"✅ Updated {jira_key} status to 'In Progress'")
+                logger.info(f"✅ Updated {jira_key} status to 'In Progress'")
             else:
-                print(f"⚠️ No 'In Progress' transition found for {jira_key}")
+                logger.warning(f"⚠️ No 'In Progress' transition found for {jira_key}")
             
             # Update custom fields for planned_start and planned_end
             # Note: These field IDs may need to be adjusted based on your JIRA configuration
@@ -256,12 +259,12 @@ class JiraService:
             # fields_update['customfield_10001'] = planned_end.strftime('%Y-%m-%dT%H:%M:%S.000+0000')
             
             issue.update(fields=fields_update)
-            print(f"✅ Updated {jira_key} timing: Start={planned_start}")
+            logger.info(f"✅ Updated {jira_key} timing: Start={planned_start}")
             
             return True
             
         except Exception as e:
-            print(f"❌ Failed to update JIRA task {jira_key}: {e}")
+            logger.error(f"❌ Failed to update JIRA task {jira_key}: {e}")
             return False
     
     def _issue_to_dict(self, issue):
