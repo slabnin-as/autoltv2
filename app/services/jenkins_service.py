@@ -1,10 +1,14 @@
 import logging
+import urllib3
 from datetime import datetime
 import jenkins
 from app import db
 from app.models.jenkins_job_config import JenkinsJobConfig
 from app.models.user_data import UserData
 from config.config import Config
+
+# Disable SSL warnings for Jenkins connections
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +52,8 @@ class JenkinsService:
                 username=username,
                 password=token
             )
+            # Disable SSL certificate verification
+            self.default_server._session.verify = False
             self.default_server.get_whoami()
             self._default_connected = True
 
@@ -87,6 +93,8 @@ class JenkinsService:
                     username=auth_username,
                     password=auth_token
                 )
+                # Disable SSL certificate verification
+                self.connections[connection_key]._session.verify = False
                 # Test connection
                 self.connections[connection_key].get_whoami()
             except Exception as e:
