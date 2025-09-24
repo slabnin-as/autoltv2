@@ -56,19 +56,14 @@ class JenkinsService:
             self.default_server = None
             self._default_connected = False
     
-    def _get_jenkins_connection(self, jenkins_url, username=None, token=None, jenkins_service=None):
+    def _get_jenkins_connection(self, jenkins_url, username=None, token=None):
         """Get or create Jenkins connection for specific instance"""
         # Try database credentials first if no specific credentials provided
         if not username or not token:
             jenkins_creds = None
             try:
-                # Try to find credentials by jenkins service name (jenkins_ltcbp, jenkins_ekp, jenkins_report)
-                if jenkins_service:
-                    jenkins_creds = UserData.get_credentials(jenkins_service)
-
-                # If no specific credentials found, try default jenkins service
-                if not jenkins_creds:
-                    jenkins_creds = UserData.get_credentials('jenkins')
+                # Just get generic jenkins credentials
+                jenkins_creds = UserData.get_credentials('jenkins')
             except Exception as e:
                 logger.warning(f"⚠️ Could not access database for Jenkins credentials: {e}")
 
@@ -262,56 +257,17 @@ class JenkinsService:
             logger.error(f"Error listing Jenkins jobs: {e}")
             return []
 
-    # Convenience methods for specific Jenkins services
-    def trigger_job_ltcbp(self, job_name, parameters=None):
-        """Trigger job on LTCBP Jenkins server"""
-        jenkins_creds = UserData.get_credentials('jenkins_ltcbp')
-        if jenkins_creds:
-            jenkins_conn = self._get_jenkins_connection(
-                jenkins_url=Config.JENKINS_URL,  # или URL для LTCBP
-                jenkins_service='jenkins_ltcbp'
-            )
-            if jenkins_conn:
-                try:
-                    if parameters:
-                        jenkins_conn.build_job(job_name, parameters)
-                    else:
-                        jenkins_conn.build_job(job_name)
-                    return True, f"Job {job_name} triggered on LTCBP Jenkins"
-                except Exception as e:
-                    return False, f"Failed to trigger job on LTCBP: {e}"
-        return False, "LTCBP Jenkins connection not available"
-
-    def trigger_job_ekp(self, job_name, parameters=None):
-        """Trigger job on EKP Jenkins server"""
+    # Convenience methods for different Jenkins URLs
+    def trigger_job_by_url(self, jenkins_url, job_name, parameters=None):
+        """Trigger job on specific Jenkins server by URL"""
         try:
-            jenkins_conn = self._get_jenkins_connection(
-                jenkins_url=Config.JENKINS_URL,  # или URL для EKP
-                jenkins_service='jenkins_ekp'
-            )
+            jenkins_conn = self._get_jenkins_connection(jenkins_url)
             if jenkins_conn:
                 if parameters:
                     jenkins_conn.build_job(job_name, parameters)
                 else:
                     jenkins_conn.build_job(job_name)
-                return True, f"Job {job_name} triggered on EKP Jenkins"
+                return True, f"Job {job_name} triggered on {jenkins_url}"
         except Exception as e:
-            return False, f"Failed to trigger job on EKP: {e}"
-        return False, "EKP Jenkins connection not available"
-
-    def trigger_job_report(self, job_name, parameters=None):
-        """Trigger job on Report Jenkins server"""
-        try:
-            jenkins_conn = self._get_jenkins_connection(
-                jenkins_url=Config.JENKINS_URL,  # или URL для Report
-                jenkins_service='jenkins_report'
-            )
-            if jenkins_conn:
-                if parameters:
-                    jenkins_conn.build_job(job_name, parameters)
-                else:
-                    jenkins_conn.build_job(job_name)
-                return True, f"Job {job_name} triggered on Report Jenkins"
-        except Exception as e:
-            return False, f"Failed to trigger job on Report: {e}"
-        return False, "Report Jenkins connection not available"
+            return False, f"Failed to trigger job on {jenkins_url}: {e}"
+        return False, f"Jenkins connection not available for {jenkins_url}"
