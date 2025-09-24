@@ -99,3 +99,49 @@ def api_update_job(job_id):
     
     db.session.commit()
     return jsonify(job.to_dict())
+
+@bp.route('/api/trigger/<int:job_id>', methods=['POST'])
+def api_trigger_job(job_id):
+    """API endpoint to trigger Jenkins job with parameters"""
+    job = JenkinsJobConfig.query.get_or_404(job_id)
+    jenkins_service = JenkinsService()
+
+    # Get parameters from request body
+    data = request.get_json() or {}
+    parameters = data.get('parameters', {})
+
+    success, message = jenkins_service.trigger_job_by_config(job_id, parameters)
+
+    return jsonify({
+        'success': success,
+        'message': message,
+        'job_name': job.job_name,
+        'job_id': job_id,
+        'parameters': parameters
+    }), 200 if success else 500
+
+@bp.route('/api/trigger-by-url', methods=['POST'])
+def api_trigger_job_by_url():
+    """API endpoint to trigger Jenkins job by URL with parameters"""
+    data = request.get_json()
+
+    if not data or 'jenkins_url' not in data or 'job_name' not in data:
+        return jsonify({
+            'success': False,
+            'message': 'jenkins_url and job_name are required'
+        }), 400
+
+    jenkins_url = data['jenkins_url']
+    job_name = data['job_name']
+    parameters = data.get('parameters', {})
+
+    jenkins_service = JenkinsService()
+    success, message = jenkins_service.trigger_job_by_url(jenkins_url, job_name, parameters)
+
+    return jsonify({
+        'success': success,
+        'message': message,
+        'jenkins_url': jenkins_url,
+        'job_name': job_name,
+        'parameters': parameters
+    }), 200 if success else 500
