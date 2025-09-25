@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, current_app
 from sqlalchemy import or_
 from app import db
 from app.models.jira_task import JiraTask
@@ -169,10 +169,53 @@ def api_auto_sync_only():
 
 @bp.route('/api/autolt-process', methods=['POST'])
 def api_autolt_process():
-    """API endpoint for AutoLT process execution (for cron)"""
-    autolt_service = AutoLTService()
-    result = autolt_service.run_autolt_process()
-    return jsonify(result)
+    """API endpoint for AutoLT process execution (for cron) - starts process in background"""
+    import threading
+    from datetime import datetime
+
+    def run_background_process():
+        """Run AutoLT process in background thread"""
+        try:
+            autolt_service = AutoLTService()
+            with current_app.app_context():
+                result = autolt_service.run_autolt_process()
+                current_app.logger.info(f"🏁 Background AutoLT process completed: {result}")
+        except Exception as e:
+            current_app.logger.error(f"❌ Background AutoLT process failed: {e}")
+
+    # Start background thread
+    thread = threading.Thread(target=run_background_process, daemon=True)
+    thread.start()
+
+    # Return immediate response
+    return jsonify({
+        "status": "started",
+        "message": "AutoLT process started in background",
+        "started_at": datetime.utcnow().isoformat(),
+        "thread_id": thread.ident,
+        "info": "Process will run in background. Check logs for progress updates."
+    })
+
+@bp.route('/api/autolt-status', methods=['GET'])
+def api_autolt_status():
+    """API endpoint to check status of background AutoLT processes"""
+    import threading
+
+    active_threads = []
+    for thread in threading.enumerate():
+        if thread.name.startswith('Thread-') and thread.is_alive():
+            active_threads.append({
+                "thread_id": thread.ident,
+                "thread_name": thread.name,
+                "is_alive": thread.is_alive(),
+                "daemon": thread.daemon
+            })
+
+    return jsonify({
+        "active_background_threads": len(active_threads),
+        "threads": active_threads,
+        "info": "Check application logs for detailed progress information"
+    })
 
 @bp.route('/api/auto-schedule-only', methods=['POST'])
 def api_auto_schedule_only():
