@@ -173,23 +173,25 @@ def api_autolt_process():
     import threading
     from datetime import datetime
 
-    # Get app reference for background thread
-    app = current_app._get_current_object()
-
     def run_background_process():
         """Run AutoLT process in background thread"""
+        from flask import current_app
+        import logging
+
         try:
+            # Import app from main module
+            from run import app
             with app.app_context():
                 autolt_service = AutoLTService()
                 result = autolt_service.run_autolt_process()
-                app.logger.info(f"🏁 Background AutoLT process completed: {result}")
+                current_app.logger.info(f"🏁 Background AutoLT process completed: {result}")
         except Exception as e:
             try:
+                from run import app
                 with app.app_context():
-                    app.logger.error(f"❌ Background AutoLT process failed: {e}")
+                    current_app.logger.error(f"❌ Background AutoLT process failed: {e}")
             except Exception:
                 # Fallback to basic logging if app context unavailable
-                import logging
                 logging.error(f"❌ Background AutoLT process failed: {e}")
 
     # Start background thread
