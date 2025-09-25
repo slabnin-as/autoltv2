@@ -8,6 +8,7 @@ class UserData(db.Model):
     service = Column(String(50), nullable=False, index=True)
     name = Column(String(100), nullable=True)
     token = Column(Text, nullable=False)
+    url = Column(String(200), nullable=True)
     
     def __repr__(self):
         return f'<UserData {self.service}:{self.name}>'
