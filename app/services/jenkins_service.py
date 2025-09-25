@@ -15,57 +15,7 @@ logger = logging.getLogger(__name__)
 class JenkinsService:
     def __init__(self):
         self.connections = {}  # Cache for multiple Jenkins connections
-        self.default_server = None
-        self._default_connected = False
     
-    def _ensure_default_connection(self):
-        """Ensure default connection is established"""
-        if not self._default_connected:
-            self._connect_default()
-
-    def _connect_default(self, jenkins_url=None):
-        """Connect to default Jenkins server using database credentials first"""
-        try:
-            # Try to get credentials from database first
-            jenkins_creds = None
-            try:
-                if jenkins_url:
-                    # Если передан конкретный URL, ищем по нему
-                    jenkins_creds = UserData.query.filter_by(url=jenkins_url).first()
-
-                if not jenkins_creds:
-                    # Если не найдено по URL, берем любую Jenkins запись
-                    jenkins_creds = UserData.query.filter(UserData.service.like('%jenkins%')).first()
-
-            except Exception as e:
-                logger.warning(f"⚠️ Ошибка доступа к БД для дефолтных Jenkins credentials: {e}")
-
-            if jenkins_creds:
-                logger.info(f"🔑 Использую Jenkins credentials из БД: url={jenkins_creds.url}, user={jenkins_creds.name}")
-                username = jenkins_creds.name or Config.JENKINS_USERNAME
-                token = jenkins_creds.token
-                # Используем URL из базы, если он есть, иначе из конфига
-                jenkins_url = jenkins_creds.url or jenkins_url or Config.JENKINS_URL
-            else:
-                logger.warning(f"⚠️ Не найдены Jenkins credentials в БД, использую переменные окружения")
-                username = Config.JENKINS_USERNAME
-                token = Config.JENKINS_TOKEN
-                jenkins_url = jenkins_url or Config.JENKINS_URL
-            
-            self.default_server = jenkins.Jenkins(
-                jenkins_url,
-                username=username,
-                password=token
-            )
-            # Disable SSL certificate verification
-            self.default_server._session.verify = False
-            self.default_server.get_whoami()
-            self._default_connected = True
-
-        except Exception as e:
-            logger.error(f"Failed to connect to Jenkins: {e}")
-            self.default_server = None
-            self._default_connected = False
     
     def _get_jenkins_connection(self, jenkins_url, username=None, token=None):
         """Get or create Jenkins connection for specific instance"""
@@ -139,51 +89,36 @@ class JenkinsService:
         except Exception as e:
             return False, f"Failed to trigger job: {str(e)}"
     
-    def trigger_job(self, job_name, parameters=None):
-        """Trigger job on default Jenkins server"""
-        self._ensure_default_connection()
-        if not self.default_server:
-            return False, "Default Jenkins connection not available"
-        
-        try:
-            if parameters:
-                build_number = self.default_server.build_job(job_name, parameters)
-            else:
-                build_number = self.default_server.build_job(job_name)
-            
-            return True, f"Job triggered successfully. Build number: {build_number}"
-        except Exception as e:
-            return False, f"Failed to trigger job: {e}"
     
-    def get_job_info(self, job_name):
-        """Get job information from default Jenkins server"""
-        self._ensure_default_connection()
-        if not self.default_server:
+    def get_job_info_by_url(self, job_name, jenkins_url):
+        """Get job information from specific Jenkins server"""
+        jenkins_conn = self._get_jenkins_connection(jenkins_url)
+        if not jenkins_conn:
             return None
-        
+
         try:
-            return self.default_server.get_job_info(job_name)
+            return jenkins_conn.get_job_info(job_name)
         except Exception as e:
-            logger.warning(f"⚠️ Could not get job info for {job_name}: {e}")
+            logger.warning(f"⚠️ Could not get job info for {job_name} on {jenkins_url}: {e}")
             return None
     
-    def stop_job(self, job_name, build_number=None):
-        """Stop a running job"""
-        self._ensure_default_connection()
-        if not self.default_server:
-            return False, "Default Jenkins connection not available"
-        
+    def stop_job_by_url(self, job_name, jenkins_url, build_number=None):
+        """Stop a running job on specific Jenkins server"""
+        jenkins_conn = self._get_jenkins_connection(jenkins_url)
+        if not jenkins_conn:
+            return False, f"Cannot connect to Jenkins: {jenkins_url}"
+
         try:
             if build_number:
-                self.default_server.stop_build(job_name, build_number)
+                jenkins_conn.stop_build(job_name, build_number)
             else:
                 # Get the latest build number
-                job_info = self.default_server.get_job_info(job_name)
+                job_info = jenkins_conn.get_job_info(job_name)
                 if job_info and 'lastBuild' in job_info and job_info['lastBuild']:
                     last_build = job_info['lastBuild']['number']
-                    self.default_server.stop_build(job_name, last_build)
-            
-            return True, f"Job {job_name} stopped successfully"
+                    jenkins_conn.stop_build(job_name, last_build)
+
+            return True, f"Job {job_name} stopped successfully on {jenkins_url}"
         except Exception as e:
             return False, f"Failed to stop job: {e}"
     
@@ -228,51 +163,36 @@ class JenkinsService:
         except Exception as e:
             return {"error": "Could not retrieve job status"}
     
-    def get_job_info_with_url(self, job_name, jenkins_url=None):
-        """Get job info from specific or default Jenkins"""
-        if jenkins_url:
-            jenkins_conn = self._get_jenkins_connection(jenkins_url)
-        else:
-            self._ensure_default_connection()
-            jenkins_conn = self.default_server
-
+    def get_job_info_with_url(self, job_name, jenkins_url):
+        """Get job info from specific Jenkins"""
+        jenkins_conn = self._get_jenkins_connection(jenkins_url)
         if not jenkins_conn:
             return None
-        
+
         try:
             return jenkins_conn.get_job_info(job_name)
         except Exception as e:
             logger.error(f"Error getting job info for {job_name}: {e}")
             return None
     
-    def get_build_info(self, job_name, build_number, jenkins_url=None):
-        """Get build info from specific or default Jenkins"""
-        if jenkins_url:
-            jenkins_conn = self._get_jenkins_connection(jenkins_url)
-        else:
-            self._ensure_default_connection()
-            jenkins_conn = self.default_server
-
+    def get_build_info(self, job_name, build_number, jenkins_url):
+        """Get build info from specific Jenkins"""
+        jenkins_conn = self._get_jenkins_connection(jenkins_url)
         if not jenkins_conn:
             return None
-        
+
         try:
             return jenkins_conn.get_build_info(job_name, build_number)
         except Exception as e:
             logger.error(f"Error getting build info for {job_name}#{build_number}: {e}")
             return None
     
-    def list_jobs(self, jenkins_url=None):
-        """List jobs from specific or default Jenkins"""
-        if jenkins_url:
-            jenkins_conn = self._get_jenkins_connection(jenkins_url)
-        else:
-            self._ensure_default_connection()
-            jenkins_conn = self.default_server
-
+    def list_jobs(self, jenkins_url):
+        """List jobs from specific Jenkins"""
+        jenkins_conn = self._get_jenkins_connection(jenkins_url)
         if not jenkins_conn:
             return []
-        
+
         try:
             return jenkins_conn.get_jobs()
         except Exception as e:
