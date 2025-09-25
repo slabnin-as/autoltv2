@@ -300,19 +300,49 @@ class AutoLTService:
         db.session.commit()
     
     def _is_job_running(self, job_name: str) -> bool:
-        """Check if Jenkins job is currently running"""
+        """Check if Jenkins job is currently running by checking last build inProgress status"""
         try:
             # Get Jenkins URL for this job
             jenkins_url = self._get_job_url(job_name)
             if not jenkins_url:
                 return False
 
-            # Use Jenkins service to check job status
+            # Get job info first
             job_info = self.jenkins_service.get_job_info_by_url(job_name, jenkins_url)
-            if job_info:
-                # Check if there are any running builds
-                return job_info.get('color', '') == 'blue_anime' or job_info.get('inQueue', False)
-            return False
+            if not job_info:
+                logger.warning(f"⚠️ Could not get job info for {job_name}")
+                return False
+
+            # Check if job is in queue first
+            if job_info.get('inQueue', False):
+                logger.info(f"🕐 Job {job_name} is in queue")
+                return True
+
+            # Get last build info
+            last_build = job_info.get('lastBuild')
+            if not last_build:
+                logger.info(f"📭 Job {job_name} has no builds")
+                return False
+
+            last_build_number = last_build.get('number')
+            if not last_build_number:
+                return False
+
+            # Get detailed build information
+            build_info = self.jenkins_service.get_build_info(job_name, last_build_number, jenkins_url)
+            if not build_info:
+                logger.warning(f"⚠️ Could not get build info for {job_name} build #{last_build_number}")
+                return False
+
+            # Check inProgress field
+            is_running = build_info.get('inProgress', False)
+            if is_running:
+                logger.info(f"🔄 Job {job_name} build #{last_build_number} is in progress")
+            else:
+                logger.info(f"✅ Job {job_name} build #{last_build_number} is completed")
+
+            return is_running
+
         except Exception as e:
             logger.warning(f"⚠️ Could not check status for job {job_name}: {e}")
             return False
