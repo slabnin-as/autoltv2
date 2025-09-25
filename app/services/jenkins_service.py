@@ -23,29 +23,34 @@ class JenkinsService:
         if not self._default_connected:
             self._connect_default()
 
-    def _connect_default(self, jenkins_service='jenkins'):
+    def _connect_default(self, jenkins_url=None):
         """Connect to default Jenkins server using database credentials first"""
         try:
             # Try to get credentials from database first
             jenkins_creds = None
             try:
-                jenkins_creds = UserData.get_credentials(jenkins_service)
-                if not jenkins_creds and jenkins_service != 'jenkins':
-                    # Fallback to generic jenkins if specific service not found
-                    jenkins_creds = UserData.get_credentials('jenkins')
+                if jenkins_url:
+                    # Если передан конкретный URL, ищем по нему
+                    jenkins_creds = UserData.query.filter_by(url=jenkins_url).first()
+
+                if not jenkins_creds:
+                    # Если не найдено по URL, берем любую Jenkins запись
+                    jenkins_creds = UserData.query.filter(UserData.service.like('%jenkins%')).first()
+
             except Exception as e:
-                logger.warning(f"⚠️ Could not access database for Jenkins credentials: {e}")
+                logger.warning(f"⚠️ Ошибка доступа к БД для дефолтных Jenkins credentials: {e}")
 
             if jenkins_creds:
-                logger.info(f"🔑 Using Jenkins credentials from database for service: {jenkins_service}, user: {jenkins_creds.name or 'default'}")
+                logger.info(f"🔑 Использую Jenkins credentials из БД: url={jenkins_creds.url}, user={jenkins_creds.name}")
                 username = jenkins_creds.name or Config.JENKINS_USERNAME
                 token = jenkins_creds.token
-                jenkins_url = Config.JENKINS_URL
+                # Используем URL из базы, если он есть, иначе из конфига
+                jenkins_url = jenkins_creds.url or jenkins_url or Config.JENKINS_URL
             else:
-                logger.warning(f"⚠️ No Jenkins credentials found for service {jenkins_service}, using environment variables")
+                logger.warning(f"⚠️ Не найдены Jenkins credentials в БД, использую переменные окружения")
                 username = Config.JENKINS_USERNAME
                 token = Config.JENKINS_TOKEN
-                jenkins_url = Config.JENKINS_URL
+                jenkins_url = jenkins_url or Config.JENKINS_URL
             
             self.default_server = jenkins.Jenkins(
                 jenkins_url,
