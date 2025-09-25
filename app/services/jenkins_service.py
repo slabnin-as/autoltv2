@@ -68,14 +68,39 @@ class JenkinsService:
         if not username or not token:
             jenkins_creds = None
             try:
-                # Just get generic jenkins credentials
-                jenkins_creds = UserData.get_credentials('jenkins')
+                # Try to find credentials by URL - search in user_data where name matches jenkins_url and service is jenkins
+                jenkins_creds = UserData.query.filter_by(service='jenkins', name=jenkins_url).first()
+
+                # If not found by exact URL, try to find by service='jenkins' only (fallback)
+                if not jenkins_creds:
+                    logger.info(f"🔍 No specific credentials found for URL {jenkins_url}, trying fallback")
+                    jenkins_creds = UserData.get_credentials('jenkins')
+
+                logger.info(f"🔍 Looking for credentials for URL: {jenkins_url}")
+                if jenkins_creds:
+                    logger.info(f"✅ Found credentials: service={jenkins_creds.service}, name={jenkins_creds.name}")
+                else:
+                    logger.warning(f"⚠️ No Jenkins credentials found in database")
+
             except Exception as e:
                 logger.warning(f"⚠️ Could not access database for Jenkins credentials: {e}")
 
             if jenkins_creds:
-                auth_username = username or jenkins_creds.name or Config.JENKINS_USERNAME
-                auth_token = token or jenkins_creds.token
+                # Handle different credential formats
+                if jenkins_creds.name == jenkins_url:
+                    # This is URL-specific credentials, token format: "username:token"
+                    if ':' in jenkins_creds.token:
+                        cred_username, cred_token = jenkins_creds.token.split(':', 1)
+                        auth_username = username or cred_username
+                        auth_token = token or cred_token
+                    else:
+                        # Old format, just token
+                        auth_username = username or Config.JENKINS_USERNAME
+                        auth_token = token or jenkins_creds.token
+                else:
+                    # This is generic jenkins credentials, name is username
+                    auth_username = username or jenkins_creds.name or Config.JENKINS_USERNAME
+                    auth_token = token or jenkins_creds.token
             else:
                 auth_username = username or Config.JENKINS_USERNAME
                 auth_token = token or Config.JENKINS_TOKEN
