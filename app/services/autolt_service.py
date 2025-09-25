@@ -129,7 +129,7 @@ class AutoLTService:
         if not start_ekp_running and not test_build_running:
             # Both stopped - start Start_EKP_pipe
             logger.info("🚀 Starting Start_EKP_pipe...")
-            success, message = self.jenkins_service.trigger_job('Start_EKP_pipe')
+            success, message = self._trigger_job('Start_EKP_pipe')
             if not success:
                 logger.error(f"❌ Failed to start Start_EKP_pipe: {message}")
                 task.status = 'FAIL'
@@ -139,7 +139,7 @@ class AutoLTService:
         elif start_ekp_running and not test_build_running:
             # Only start test-project-build
             logger.info("🚀 Starting test-project-build...")
-            success, message = self.jenkins_service.trigger_job('test-project-build')
+            success, message = self._trigger_job('test-project-build')
             if not success:
                 logger.error(f"❌ Failed to start test-project-build: {message}")
                 task.status = 'FAIL'
@@ -169,7 +169,7 @@ class AutoLTService:
         if not start_infosrv_running and not infosrv_only_running:
             # Both stopped - start Start_infosrv_pipe
             logger.info("🚀 Starting Start_infosrv_pipe...")
-            success, message = self.jenkins_service.trigger_job('Start_infosrv_pipe')
+            success, message = self._trigger_job('Start_infosrv_pipe')
             if not success:
                 logger.error(f"❌ Failed to start Start_infosrv_pipe: {message}")
                 task.status = 'FAIL'
@@ -179,7 +179,7 @@ class AutoLTService:
         elif start_infosrv_running and not infosrv_only_running:
             # Only start infosrv_only
             logger.info("🚀 Starting infosrv_only...")
-            success, message = self.jenkins_service.trigger_job('infosrv_only')
+            success, message = self._trigger_job('infosrv_only')
             if not success:
                 logger.error(f"❌ Failed to start infosrv_only: {message}")
                 task.status = 'FAIL'
@@ -230,7 +230,7 @@ class AutoLTService:
         
         # Trigger deploy job and wait for completion
         logger.info("🚀 Starting job.deploy...")
-        success, message = self.jenkins_service.trigger_job('job.deploy')
+        success, message = self._trigger_job('job.deploy')
         
         if not success:
             logger.error(f"❌ Failed to start job.deploy: {message}")
@@ -253,7 +253,7 @@ class AutoLTService:
         
         # Start test job again
         logger.info(f"🚀 Starting {test_job_name}...")
-        self.jenkins_service.trigger_job(test_job_name)
+        self._trigger_job(test_job_name)
         
         # Wait for warmup again (30 minutes)
         logger.info("⏰ Waiting 30 minutes for environment warmup...")
@@ -288,7 +288,7 @@ class AutoLTService:
         
         # Trigger report job
         logger.info("🚀 Starting create_report...")
-        success, message = self.jenkins_service.trigger_job('create_report')
+        success, message = self._trigger_job('create_report')
         
         if success:
             task.status = 'completed'
@@ -302,8 +302,13 @@ class AutoLTService:
     def _is_job_running(self, job_name: str) -> bool:
         """Check if Jenkins job is currently running"""
         try:
+            # Get Jenkins URL for this job
+            jenkins_url = self._get_job_url(job_name)
+            if not jenkins_url:
+                return False
+
             # Use Jenkins service to check job status
-            job_info = self.jenkins_service.get_job_info(job_name)
+            job_info = self.jenkins_service.get_job_info_by_url(job_name, jenkins_url)
             if job_info:
                 # Check if there are any running builds
                 return job_info.get('color', '') == 'blue_anime' or job_info.get('inQueue', False)
@@ -315,7 +320,13 @@ class AutoLTService:
     def _stop_job(self, job_name: str):
         """Stop Jenkins job"""
         try:
-            success, message = self.jenkins_service.stop_job(job_name)
+            # Get Jenkins URL for this job
+            jenkins_url = self._get_job_url(job_name)
+            if not jenkins_url:
+                logger.warning(f"⚠️ Cannot find URL for job {job_name}")
+                return
+
+            success, message = self.jenkins_service.stop_job_by_url(job_name, jenkins_url)
             if success:
                 logger.info(f"✅ Job {job_name} stopped successfully")
             else:
@@ -328,13 +339,39 @@ class AutoLTService:
         logger.info(f"⏰ Waiting for {job_name} to complete...")
         start_time = datetime.utcnow()
         timeout = timedelta(minutes=timeout_minutes)
-        
+
         while datetime.utcnow() - start_time < timeout:
             if not self._is_job_running(job_name):
                 logger.info(f"✅ Job {job_name} completed")
                 return True
-            
+
             time.sleep(30)  # Check every 30 seconds
-        
+
         logger.warning(f"⚠️ Job {job_name} did not complete within {timeout_minutes} minutes")
         return False
+
+    def _get_job_url(self, job_name: str) -> str:
+        """Get Jenkins URL for job by job name"""
+        try:
+            job_config = JenkinsJobConfig.query.filter_by(job_name=job_name).first()
+            if job_config:
+                return job_config.project_url
+            else:
+                logger.warning(f"⚠️ Job configuration not found for {job_name}")
+                return None
+        except Exception as e:
+            logger.error(f"❌ Error getting URL for job {job_name}: {e}")
+            return None
+
+    def _trigger_job(self, job_name: str, parameters=None):
+        """Trigger Jenkins job by name (gets URL from database)"""
+        try:
+            # Get Jenkins URL for this job
+            jenkins_url = self._get_job_url(job_name)
+            if not jenkins_url:
+                return False, f"Cannot find URL for job {job_name}"
+
+            # Use Jenkins service to trigger job
+            return self.jenkins_service.trigger_job_by_url(jenkins_url, job_name, parameters)
+        except Exception as e:
+            return False, f"Error triggering job {job_name}: {e}"
